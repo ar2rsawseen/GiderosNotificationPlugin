@@ -2,8 +2,8 @@
 <h4>1) Gideros project</h4>
 <ul>
 <li>Create Gideros project</li>
-<li>Export it as Android project</li>
-<li>Import it in Eclipse</li>
+<li>Export it as IOS project</li>
+<li>Open project in Xcode</li>
 </ul>
 <h4>2) Copying files</h4>
 <ul>

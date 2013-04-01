@@ -4,4 +4,6 @@
 <h2>Example project</h2>
 <p>GiderosNotification contains example Gideros project that uses Notifications</p>
 <h2>Android plugin</h2>
-<p>AndroidPlugin directory contains Android installation instructions</p>
+<p>AndroidPlugin directory contains Android plugin and installation instructions</p>
+<h2>IOS plugin</h2>
+<p>IOSPlugin directory contains IOS plugin and installation instructions</p>

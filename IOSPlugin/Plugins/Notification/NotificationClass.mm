@@ -41,8 +41,6 @@ static NSMutableDictionary *notifics = [NSMutableDictionary dictionary];
         note = nil;
     }
     
-    [notifics removeAllObjects];
-    
     canDispatch = false;
 }
 

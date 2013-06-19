@@ -58,10 +58,10 @@ static std::map<std::string, std::string> tableToMap(lua_State *L, int index)
 
 static char keyWeak = ' ';
 
-static const char *ON_LOCAL_NOTIFICATION = "onLocalNotification";
-static const char *ON_PUSH_NOTIFICATION = "onPushNotification";
-static const char *ON_PUSH_REGISTRATION = "onPushRegistration";
-static const char *ON_PUSH_REGISTRATION_ERROR = "onPushRegistrationError";
+static const char *LOCAL_NOTIFICATION = "localNotification";
+static const char *PUSH_NOTIFICATION = "pushNotification";
+static const char *PUSH_REGISTRATION = "pushRegistration";
+static const char *PUSH_REGISTRATION_ERROR = "pushRegistrationError";
 
 class NotificationManager : public GEventDispatcherProxy
 {
@@ -155,16 +155,16 @@ private:
         switch (type)
         {
             case NOTIFICATION_LOCAL_EVENT:
-                lua_pushstring(L, ON_LOCAL_NOTIFICATION);
+                lua_pushstring(L, LOCAL_NOTIFICATION);
                 break;
             case NOTIFICATION_PUSH_EVENT:
-                lua_pushstring(L, ON_PUSH_NOTIFICATION);
+                lua_pushstring(L, PUSH_NOTIFICATION);
                 break;
 			case NOTIFICATION_PUSH_REGISTER_EVENT:
-                lua_pushstring(L, ON_PUSH_REGISTRATION);
+                lua_pushstring(L, PUSH_REGISTRATION);
                 break;
 			case NOTIFICATION_PUSH_REGISTER_ERROR_EVENT:
-                lua_pushstring(L, ON_PUSH_REGISTRATION_ERROR);
+                lua_pushstring(L, PUSH_REGISTRATION_ERROR);
                 break;
         }
 
@@ -769,14 +769,14 @@ static int loader(lua_State *L)
     luaL_rawsetptr(L, LUA_REGISTRYINDEX, &keyWeak);
 	
 	lua_getglobal(L, "Event");
-	lua_pushstring(L, ON_LOCAL_NOTIFICATION);
-	lua_setfield(L, -2, "ON_LOCAL_NOTIFICATION");
-	lua_pushstring(L, ON_PUSH_NOTIFICATION);
-	lua_setfield(L, -2, "ON_PUSH_NOTIFICATION");
-	lua_pushstring(L, ON_PUSH_REGISTRATION);
-	lua_setfield(L, -2, "ON_PUSH_REGISTRATION");
-	lua_pushstring(L, ON_PUSH_REGISTRATION_ERROR);
-	lua_setfield(L, -2, "ON_PUSH_REGISTRATION_ERROR");
+	lua_pushstring(L, LOCAL_NOTIFICATION);
+	lua_setfield(L, -2, "LOCAL_NOTIFICATION");
+	lua_pushstring(L, PUSH_NOTIFICATION);
+	lua_setfield(L, -2, "PUSH_NOTIFICATION");
+	lua_pushstring(L, PUSH_REGISTRATION);
+	lua_setfield(L, -2, "PUSH_REGISTRATION");
+	lua_pushstring(L, PUSH_REGISTRATION_ERROR);
+	lua_setfield(L, -2, "PUSH_REGISTRATION_ERROR");
 	lua_pop(L, 1);
 	
 	lua_getglobal(L, "Notification");

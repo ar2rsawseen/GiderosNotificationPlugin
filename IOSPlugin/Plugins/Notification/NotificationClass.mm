@@ -12,9 +12,9 @@
 @implementation NotificationClass
 
 static bool canDispatch = false;
-static NSMutableDictionary *notifics = [NSMutableDictionary dictionary];
-+(void)initialize{
-
+@synthesize notifics = _notifics;
+-(id)initialize{
+    self.notifics = [NSMutableDictionary dictionary];
     //subscribe to events
     NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
     [center addObserver:self selector:@selector(onLocalHandler) name:UIApplicationLaunchOptionsLocalNotificationKey object:nil];
@@ -25,31 +25,31 @@ static NSMutableDictionary *notifics = [NSMutableDictionary dictionary];
     [center addObserver:self selector:@selector(onPushError:) name:@"onPushRegistrationError" object:nil];
     [center addObserver:self selector:@selector(onPrePushHandler:) name:@"onPushNotification" object:nil];
     [center addObserver:self selector:@selector(onPreLocalHandler:) name:@"onLocalNotification" object:nil];
+    return self;
 }
 
-+(void)onActive{
+-(void)onActive{
     [UIApplication sharedApplication].applicationIconBadgeNumber = 0;
 }
 
-+(void)deinitialize{
+-(void)deinitialize{
     NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
     [center removeObserver:self];
-    
-    for(NSString *key in notifics){
-        GNotification *note = [notifics objectForKey:key];
+
+    for(NSString *key in self.notifics){
+        GNotification *note = [self.notifics objectForKey:key];
         [note release];
-        note = nil;
     }
     
     canDispatch = false;
 }
 
-+(void)init:(int) nid{
+-(void)init:(int) nid{
  
-    GNotification *note = [[[GNotification alloc] init] autorelease];
+    GNotification *note = [[GNotification alloc] init:self];
         
     note.nid = nid;
-    NSMutableDictionary *dic = [NotificationClass get:nid fromRepo:@"NotificationLocal"];
+    NSMutableDictionary *dic = [self get:nid fromRepo:@"NotificationLocal"];
     if(dic != NULL)
     {
         note.isDispatched = true;
@@ -58,173 +58,215 @@ static NSMutableDictionary *notifics = [NSMutableDictionary dictionary];
         note.sound = [dic objectForKey:@"sound"];
         note.number = [[dic objectForKey:@"title"] intValue];
     }
-    [notifics setObject:note forKey:[NSString stringWithFormat:@"%d", nid]];
+    [self.notifics setObject:note forKey:[NSString stringWithFormat:@"%d", nid]];
         
 }
 
-+(void)cleanup:(int) nid{
-    GNotification *note = [notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
+-(void)cleanup:(int) nid{
+    GNotification *note = [self.notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
     if(note != NULL){
-        [notifics removeObjectForKey:[NSString stringWithFormat:@"%d", nid]];
+        [self.notifics removeObjectForKey:[NSString stringWithFormat:@"%d", nid]];
         note = nil;
     }
 }
 
-+(void)setTitle:(NSString*)title withID:(int) nid{
-    GNotification *note = [notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
+-(void)setTitle:(NSString*)title withID:(int) nid{
+    GNotification *note = [self.notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
     if(note != NULL){
         note.title = title;
     }
 }
 
-+(NSString*)getTitle:(int) nid{
-    GNotification *note = [notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
+-(NSString*)getTitle:(int) nid{
+    GNotification *note = [self.notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
     if(note != NULL){
         return note.title;
     }
     return @"";
 }
 
-+(void)setBody:(NSString*)body withID:(int) nid{
-    GNotification *note = [notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
+-(void)setBody:(NSString*)body withID:(int) nid{
+    GNotification *note = [self.notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
     if(note != NULL){
         note.body = body;
     }
 }
 
-+(NSString*)getBody:(int) nid{
-    GNotification *note = [notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
+-(NSString*)getBody:(int) nid{
+    GNotification *note = [self.notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
     if(note != NULL){
         return note.body;
     }
     return @"";
 }
 
-+(void)setSound:(NSString*)sound withID:(int) nid{
-    GNotification *note = [notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
+-(void)setSound:(NSString*)sound withID:(int) nid{
+    GNotification *note = [self.notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
     if(note != NULL){
         note.sound = sound;
     }
 }
 
-+(NSString*)getSound:(int) nid{
-    GNotification *note = [notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
+-(NSString*)getSound:(int) nid{
+    GNotification *note = [self.notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
     if(note != NULL){
         return note.sound;
     }
     return @"";
 }
 
-+(void)setNumber:(int)number withID:(int) nid{
-    GNotification *note = [notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
+-(void)setNumber:(int)number withID:(int) nid{
+    GNotification *note = [self.notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
     if(note != NULL){
         note.number = number;
     }
 }
 
-+(int)getNumber:(int) nid{
-    GNotification *note = [notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
+-(int)getNumber:(int) nid{
+    GNotification *note = [self.notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
     if(note != NULL){
         return note.number;
     }
     return 0;
 }
 
-+(void)dispatchNow:(int) nid{
-    GNotification *note = [notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
+-(void)dispatchNow:(int) nid{
+    GNotification *note = [self.notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
     if(note != NULL){
         [note createNotification];
     }
 }
 
-+(void)dispatchOn:(int) nid onDate:(NSMutableDictionary*) date {
-    GNotification *note = [notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
+-(void)dispatchOn:(int) nid onDate:(NSMutableDictionary*) date {
+    GNotification *note = [self.notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
     if(note != NULL){
-        NSDateComponents *comps = [NotificationClass getDate:date];
+        NSDateComponents *comps = [self getDate:date];
         note.ftime = [[NSCalendar currentCalendar] dateFromComponents:comps];
         [note createNotification];
     }
 }
 
-+(void)dispatchOn:(int) nid onDate:(NSMutableDictionary*) date repeating:(NSMutableDictionary*)repeat {
-    GNotification *note = [notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
+-(void)dispatchOn:(int) nid onDate:(NSMutableDictionary*) date repeating:(NSMutableDictionary*)repeat {
+    GNotification *note = [self.notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
     if(note != NULL){
-        NSDateComponents *comps = [NotificationClass getDate:date];
+        NSDateComponents *comps = [self getDate:date];
         note.ftime = [[NSCalendar currentCalendar] dateFromComponents:comps];
-        comps = [NotificationClass getDate:date];
-        note.repeat = [[[NSCalendar currentCalendar] dateFromComponents:comps] timeIntervalSince1970];
+        if ([[date objectForKey:@"year"] intValue] > 0) {
+            note.repeat = NSYearCalendarUnit;
+        }
+        else if ([[date objectForKey:@"month"] intValue] > 0) {
+            note.repeat = NSMonthCalendarUnit;
+        }
+        else if ([[date objectForKey:@"day"] intValue] >= 7) {
+            note.repeat = NSWeekCalendarUnit;
+        }
+        else if ([[date objectForKey:@"day"] intValue] > 0) {
+            note.repeat = NSDayCalendarUnit;
+        }
+        else if ([[date objectForKey:@"hour"] intValue] > 0) {
+            note.repeat = NSHourCalendarUnit;
+        }
+        else if ([[date objectForKey:@"min"] intValue] > 0) {
+            note.repeat = NSMinuteCalendarUnit;
+        }
+        else if ([[date objectForKey:@"sec"] intValue] > 0) {
+            note.repeat = NSSecondCalendarUnit;
+        }
+
         [note createNotification];
     }
 }
 
-+(void)dispatchAfter:(int) nid onDate:(NSMutableDictionary*) date {
-    GNotification *note = [notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
+-(void)dispatchAfter:(int) nid onDate:(NSMutableDictionary*) date {
+    GNotification *note = [self.notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
     if(note != NULL){
-        NSDateComponents *comps = [NotificationClass getDate:date];
+        NSDateComponents *comps = [self getDate:date];
         note.ftime = [[NSCalendar currentCalendar] dateByAddingComponents:comps toDate:[NSDate date] options:0];
         [note createNotification];
     }
 }
 
-+(void)dispatchAfter:(int) nid onDate:(NSMutableDictionary*) date repeating:(NSMutableDictionary*)repeat {
-    GNotification *note = [notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
+-(void)dispatchAfter:(int) nid onDate:(NSMutableDictionary*) date repeating:(NSMutableDictionary*)repeat {
+    GNotification *note = [self.notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
     if(note != NULL){
-        NSDateComponents *comps = [NotificationClass getDate:date];
+        NSDateComponents *comps = [self getDate:date];
         note.ftime = [[NSCalendar currentCalendar] dateByAddingComponents:comps toDate:[NSDate date] options:0];
-        comps = [NotificationClass getDate:date];
-        note.repeat = [[[NSCalendar currentCalendar] dateFromComponents:comps] timeIntervalSince1970];
+        
+        if ([[date objectForKey:@"year"] intValue] > 0) {
+            note.repeat = NSYearCalendarUnit;
+        }
+        else if ([[date objectForKey:@"month"] intValue] > 0) {
+            note.repeat = NSMonthCalendarUnit;
+        }
+        else if ([[date objectForKey:@"day"] intValue] >= 7) {
+            note.repeat = NSWeekCalendarUnit;
+        }
+        else if ([[date objectForKey:@"day"] intValue] > 0) {
+            note.repeat = NSDayCalendarUnit;
+        }
+        else if ([[date objectForKey:@"hour"] intValue] > 0) {
+            note.repeat = NSHourCalendarUnit;
+        }
+        else if ([[date objectForKey:@"min"] intValue] > 0) {
+            note.repeat = NSMinuteCalendarUnit;
+        }
+        else if ([[date objectForKey:@"sec"] intValue] > 0) {
+            note.repeat = NSSecondCalendarUnit;
+        }
+
         [note createNotification];
     }
 }
 
-+(void)registerForPushNotifications{
+-(void)registerForPushNotifications{
     // Let the device know we want to receive push notifications
     [[UIApplication sharedApplication] registerForRemoteNotificationTypes:
      (UIRemoteNotificationTypeBadge | UIRemoteNotificationTypeSound | UIRemoteNotificationTypeAlert)];
 }
 
-+(void)unRegisterForPushNotifications{
+-(void)unRegisterForPushNotifications{
     // Let the device know we don't want to receive push notifications
     [[UIApplication sharedApplication] unregisterForRemoteNotifications];
 }
 
-+(void)readyForEvents{
+-(void)readyForEvents{
     canDispatch = true;
-    [NotificationClass dispatchEvents:@"NotificationLocalEvent"];
-    [NotificationClass dispatchEvents:@"NotificationPushEvent"];
+    [self dispatchEvents:@"NotificationLocalEvent"];
+    [self dispatchEvents:@"NotificationPushEvent"];
 }
 
-+(void)dispatchEvents:(NSString*)type{
-    NSMutableDictionary *arr = [NotificationClass getAll:type];
+-(void)dispatchEvents:(NSString*)type{
+    NSMutableDictionary *arr = [self getAll:type];
     if(arr)
     {
         for (NSString *key in arr) {
             NSMutableDictionary *dic = [arr objectForKey:key];
             if([type isEqualToString:@"NotificationLocalEvent"])
             {
-                [NotificationClass onLocalNotification:dic];
+                [self onLocalNotification:dic];
             }
             else if([type isEqualToString:@"NotificationPushEvent"])
             {
-                [NotificationClass onPushNotification:dic];
+                [self onPushNotification:dic];
             }
         }
+        [self deleteAll:type];
     }
 }
 
-+(void)onPreLocalHandler: (NSNotification*) note{
+-(void)onPreLocalHandler: (NSNotification*) note{
     if (note) {
-        [NotificationClass onLocalHandler:[[note userInfo] objectForKey:@"notification"]];
+        [self onLocalHandler:[[note userInfo] objectForKey:@"notification"]];
     }
 }
 
-+(void)onPrePushHandler: (NSNotification*) note{
+-(void)onPrePushHandler: (NSNotification*) note{
     if (note) {
-        [NotificationClass onPushHandler:[note userInfo]];
+        [self onPushHandler:[note userInfo]];
     }
 }
 
-+(void)onLocalHandler: (UILocalNotification*) note{
+-(void)onLocalHandler: (UILocalNotification*) note{
     if (note) {
         if(canDispatch)
         {
@@ -234,16 +276,16 @@ static NSMutableDictionary *notifics = [NSMutableDictionary dictionary];
             [dic setObject:[note soundName] ?: @"" forKey:@"sound"];
             [dic setObject:[NSString stringWithFormat:@"%d", [note applicationIconBadgeNumber] ?: 0] forKey:@"number"];
             [dic setObject:[[note userInfo] objectForKey:@"nid"] ?: @"0" forKey:@"id"];
-            [NotificationClass onLocalNotification:dic];
+            [self onLocalNotification:dic];
         }
         else
         {
-            [NotificationClass safe:[[[note userInfo] objectForKey:@"nid"] intValue] title:[note alertAction] body:[note alertBody] sound:[note soundName] ?: @"" number:[note applicationIconBadgeNumber] ?: 0 inRepo:@"NotificationLocalEvent"];
+            [self safe:[[[note userInfo] objectForKey:@"nid"] intValue] title:[note alertAction] body:[note alertBody] sound:[note soundName] ?: @"" number:[note applicationIconBadgeNumber] ?: 0 inRepo:@"NotificationLocalEvent"];
         }
     }
 }
 
-+(void)onPushHandler: (NSDictionary*) note{
+-(void)onPushHandler: (NSDictionary*) note{
     if(note){
         NSDictionary *aps = [note valueForKey:@"aps"];
         NSMutableDictionary *dic = [NSMutableDictionary dictionary];
@@ -263,17 +305,17 @@ static NSMutableDictionary *notifics = [NSMutableDictionary dictionary];
 
         if(canDispatch)
         {
-            [NotificationClass onPushNotification:dic];
+            [self onPushNotification:dic];
         }
         else
         {
-            [NotificationClass safe:[[dic objectForKey:@"id"] intValue] title:[dic objectForKey:@"title"] body:[dic objectForKey:@"body"] sound:[dic objectForKey:@"sound"] number:[[dic objectForKey:@"number"] intValue] inRepo:@"NotificationPushEvent"];
+            [self safe:[[dic objectForKey:@"id"] intValue] title:[dic objectForKey:@"title"] body:[dic objectForKey:@"body"] sound:[dic objectForKey:@"sound"] number:[[dic objectForKey:@"number"] intValue] inRepo:@"NotificationPushEvent"];
         }
-        [NotificationClass safe:[[dic objectForKey:@"id"] intValue] title:[dic objectForKey:@"title"] body:[dic objectForKey:@"body"] sound:[dic objectForKey:@"sound"] number:[[dic objectForKey:@"number"] intValue] inRepo:@"NotificationPush"];
+        [self safe:[[dic objectForKey:@"id"] intValue] title:[dic objectForKey:@"title"] body:[dic objectForKey:@"body"] sound:[dic objectForKey:@"sound"] number:[[dic objectForKey:@"number"] intValue] inRepo:@"NotificationPush"];
     }
 }
 
-+(void)onLocalNotification: (NSMutableDictionary*) note{
+-(void)onLocalNotification: (NSMutableDictionary*) note{
     //call the C API
     int nid = [[note objectForKey:@"id"] intValue];
     const char *title = [[note objectForKey:@"title"] UTF8String];
@@ -283,7 +325,7 @@ static NSMutableDictionary *notifics = [NSMutableDictionary dictionary];
     gnotification_onLocalNotification(nid, title, text, number, sound);
 }
 
-+(void)onPushNotification: (NSMutableDictionary*) note{
+-(void)onPushNotification: (NSMutableDictionary*) note{
     //call the C API
     int nid = [[note objectForKey:@"id"] intValue];
     const char *title = [[note objectForKey:@"title"] UTF8String];
@@ -293,24 +335,24 @@ static NSMutableDictionary *notifics = [NSMutableDictionary dictionary];
     gnotification_onPushNotification(nid, title, text, number, sound);
 }
 
-+(void)onPushRegistration: (NSNotification*) n{
+-(void)onPushRegistration: (NSNotification*) n{
     NSString *token = [[n userInfo] objectForKey:@"token"];
     token = [token stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"<>"]];
 	token = [token stringByReplacingOccurrencesOfString:@" " withString:@""];
     gnotification_onPushRegistration([token UTF8String]);
 }
 
-+(void)onPushError: (NSNotification*) n{
+-(void)onPushError: (NSNotification*) n{
     NSError *error = [[n userInfo] objectForKey:@"error"];
     gnotification_onPushRegistrationError([[error localizedDescription] UTF8String]);
 }
 
-+(void)cancel:(int) nid{
-    [NotificationClass cleanup: nid];
-    [NotificationClass internalCancel:nid];
+-(void)cancel:(int) nid{
+    [self cleanup: nid];
+    [self internalCancel:nid];
 }
 
-+(void)internalCancel:(int) nid{
+-(void)internalCancel:(int) nid{
     NSString *strId = [NSString stringWithFormat:@"%d", nid];
     NSArray *notifications = [[UIApplication sharedApplication] scheduledLocalNotifications];
     for(UILocalNotification *note in notifications){
@@ -320,23 +362,23 @@ static NSMutableDictionary *notifics = [NSMutableDictionary dictionary];
             [[UIApplication sharedApplication] cancelLocalNotification:note];
         }
     }
-    [NotificationClass del:nid inRepo:@"NotificationLocal"];
+    [self del:nid inRepo:@"NotificationLocal"];
 }
 
-+(void)cancelAll{
-    for(NSString *key in notifics){
-        GNotification *note = [notifics objectForKey:key];
+-(void)cancelAll{
+    for(NSString *key in self.notifics){
+        GNotification *note = [self.notifics objectForKey:key];
         [note release];
         note = nil;
     }
-    [notifics removeAllObjects];
+    [self.notifics removeAllObjects];
     [[UIApplication sharedApplication] cancelAllLocalNotifications];
-    NSMutableDictionary *local = [NotificationClass getAll:@"NotificationLocal"];
+    NSMutableDictionary *local = [self getAll:@"NotificationLocal"];
     if(local)
     {
         for(NSString *key in local) {
             NSMutableDictionary *dic = [local objectForKey:key];
-            if([NotificationClass checkNotification:[dic objectForKey:@"id"]])
+            if([self checkNotification:[dic objectForKey:@"id"]])
             {
                 [local removeObjectForKey:[dic objectForKey:@"id"]];
             }
@@ -348,7 +390,7 @@ static NSMutableDictionary *notifics = [NSMutableDictionary dictionary];
     }
 }
 
-+(NSMutableDictionary*)getScheduledNotifications{
+-(NSMutableDictionary*)getScheduledNotifications{
     NSMutableDictionary *ret = [NSMutableDictionary dictionary];
     
     NSArray *notifications = [[UIApplication sharedApplication] scheduledLocalNotifications];
@@ -368,14 +410,14 @@ static NSMutableDictionary *notifics = [NSMutableDictionary dictionary];
     return ret;
 }
 
-+(NSMutableDictionary*)getLocalNotifications{
-    NSMutableDictionary *local = [NotificationClass getAll:@"NotificationLocal"];
+-(NSMutableDictionary*)getLocalNotifications{
+    NSMutableDictionary *local = [self getAll:@"NotificationLocal"];
     NSMutableDictionary *ret = [NSMutableDictionary dictionary];
     if(local)
     {
         for(NSString *key in local) {
             NSMutableDictionary *dic = [local objectForKey:key];
-            if(![NotificationClass checkNotification:[dic objectForKey:@"id"]])
+            if(![self checkNotification:[dic objectForKey:@"id"]])
             {
                 [ret setObject:dic forKey:[dic objectForKey:@"id"]];
             }
@@ -384,17 +426,17 @@ static NSMutableDictionary *notifics = [NSMutableDictionary dictionary];
     return ret;
 }
 
-+(NSMutableDictionary*)getPushNotifications{
-    return [NotificationClass getAll:@"NotificationPush"];
+-(NSMutableDictionary*)getPushNotifications{
+    return [self getAll:@"NotificationPush"];
 }
 
-+(void)clearLocalNotifications{
-    NSMutableDictionary *local = [NotificationClass getAll:@"NotificationLocal"];
-    if(local)
+-(void)clearLocalNotifications{
+    NSMutableDictionary *local = [self getAll:@"NotificationLocal"];
+    if(local != nil)
     {
-        for(NSString *key in local) {
+        for(NSString *key in [local allKeys]) {
             NSMutableDictionary *dic = [local objectForKey:key];
-            if(![NotificationClass checkNotification:[dic objectForKey:@"id"]])
+            if(![self checkNotification:[dic objectForKey:@"id"]])
             {
                 [local removeObjectForKey:[dic objectForKey:@"id"]];
             }
@@ -405,11 +447,11 @@ static NSMutableDictionary *notifics = [NSMutableDictionary dictionary];
     }
 }
 
-+(void)clearPushNotifications{
-    [NotificationClass deleteAll:@"NotificationPush"];
+-(void)clearPushNotifications{
+    [self deleteAll:@"NotificationPush"];
 }
 
-+(NSDateComponents*)getDate:(NSMutableDictionary*) date{
+-(NSDateComponents*)getDate:(NSMutableDictionary*) date{
     NSDateComponents *comps = [[NSDateComponents alloc] init];
     [comps setSecond:[[date objectForKey:@"sec"] intValue]];
     [comps setMinute:[[date objectForKey:@"min"] intValue]];
@@ -420,7 +462,7 @@ static NSMutableDictionary *notifics = [NSMutableDictionary dictionary];
     return comps;
 }
 
-+(void)safe:(int)nid title:(NSString*)title body:(NSString*)body sound:(NSString*)sound number:(int)number inRepo:(NSString*) repo{
+-(void)safe:(int)nid title:(NSString*)title body:(NSString*)body sound:(NSString*)sound number:(int)number inRepo:(NSString*) repo{
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     NSMutableDictionary *arr = [[defaults objectForKey:repo] mutableCopy];
     if(arr == NULL)
@@ -438,7 +480,7 @@ static NSMutableDictionary *notifics = [NSMutableDictionary dictionary];
     [defaults synchronize];
 }
 
-+(void)del:(int) nid inRepo:(NSString*) repo{
+-(void)del:(int) nid inRepo:(NSString*) repo{
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     NSMutableDictionary *arr = [[defaults objectForKey:repo] mutableCopy];
     if(arr)
@@ -449,24 +491,24 @@ static NSMutableDictionary *notifics = [NSMutableDictionary dictionary];
     }
 }
 
-+(void)deleteAll:(NSString*) repo{
+-(void)deleteAll:(NSString*) repo{
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     [defaults removeObjectForKey:repo];
     [defaults synchronize];
 }
 
-+(NSMutableDictionary*)get:(int) nid fromRepo:(NSString*) repo{
+-(NSMutableDictionary*)get:(int) nid fromRepo:(NSString*) repo{
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     NSMutableDictionary *arr = [[defaults objectForKey:repo] mutableCopy];
     return [arr objectForKey:[NSString stringWithFormat:@"%d", nid]];
 }
 
-+(NSMutableDictionary*)getAll:(NSString*) repo{
+-(NSMutableDictionary*)getAll:(NSString*) repo{
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     return [[defaults objectForKey:repo] mutableCopy];
 }
 
-+(bool)checkNotification:(NSString*)nid{
+-(bool)checkNotification:(NSString*)nid{
     bool ret = false;
     NSArray *notifications = [[UIApplication sharedApplication] scheduledLocalNotifications];
     for(UILocalNotification *note in notifications){

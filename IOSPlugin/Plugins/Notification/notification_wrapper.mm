@@ -1,4 +1,5 @@
 #include "notification_wrapper.h"
+#include "gapplication.h"
 #import "NotificationClass.h"
 
 class GNotification
@@ -8,69 +9,71 @@ public:
 	{
 		gid_ = g_NextId();
         
-        [NotificationClass initialize];
+        n = [[NotificationClass alloc] initialize];
 		
 		//subscribe to event
-		gevent_AddCallback(onEnterFrame, this);
+		gapplication_addCallback(onAppStart, this);
 	}
 
 	~GNotification()
 	{
-		[NotificationClass deinitialize];
+		[n deinitialize];
+        n = nil;
 		gevent_RemoveEventsWithGid(gid_);
+		gapplication_removeCallback(onAppStart, this);
 	}
 	
 	void init(int id)
 	{
-		[NotificationClass init:id];
+		[n init:id];
 	}
 	
 	void cleanup(int id){
-		[NotificationClass cleanup:id];
+		[n cleanup:id];
 	}
 	
 	void set_title(int id, const char *title){
-		[NotificationClass setTitle:[NSString stringWithUTF8String:title] withID: id];
+		[n setTitle:[NSString stringWithUTF8String:title] withID: id];
 	}
 	
 	const char* get_title(int id){
-        return [[NotificationClass getTitle:id] UTF8String];
+        return [[n getTitle:id] UTF8String];
 	}
 	
 	void set_body(int id, const char *body){
-		[NotificationClass setBody:[NSString stringWithUTF8String:body] withID: id];
+		[n setBody:[NSString stringWithUTF8String:body] withID: id];
 	}
 	
 	const char* get_body(int id){
-		return [[NotificationClass getBody:id] UTF8String];
+		return [[n getBody:id] UTF8String];
 	}
 	
 	void set_number(int id, int number){
-		[NotificationClass setNumber:number withID: id];
+		[n setNumber:number withID: id];
 	}
 	
 	int get_number(int id){
-		return [NotificationClass getNumber:id];
+		return [n getNumber:id];
 	}
 	
 	void set_sound(int id, const char *sound){
-		[NotificationClass setSound:[NSString stringWithUTF8String:sound] withID: id];
+		[n setSound:[NSString stringWithUTF8String:sound] withID: id];
 	}
 	
 	const char* get_sound(int id){
-		return [[NotificationClass getSound:id] UTF8String];
+		return [[n getSound:id] UTF8String];
 	}
 	
 	void dispatch_now(int id){
-		[NotificationClass dispatchNow:id];
+		[n dispatchNow:id];
 	}
 	
 	void cancel(int id){
-		[NotificationClass cancel:id];
+		[n cancel:id];
 	}
 	
 	void cancel_all(){
-		[NotificationClass cancelAll];
+		[n cancelAll];
 	}
 	
 	void dispatch_after(int nid, gnotification_Parameter *params1, gnotification_Parameter *params2){
@@ -86,11 +89,11 @@ public:
                 [dic2 setObject:[NSString stringWithUTF8String:params2->value] forKey:[NSString stringWithUTF8String:params2->key]];
                 ++params2;
             }
-            [NotificationClass dispatchAfter:nid onDate:dic repeating:dic2];
+            [n dispatchAfter:nid onDate:dic repeating:dic2];
         }
         else
         {
-            [NotificationClass dispatchAfter:nid onDate:dic];
+            [n dispatchAfter:nid onDate:dic];
         }
 	}
 	
@@ -107,47 +110,47 @@ public:
                 [dic2 setObject:[NSString stringWithUTF8String:params2->value] forKey:[NSString stringWithUTF8String:params2->key]];
                 ++params2;
             }
-            [NotificationClass dispatchOn:nid onDate:dic repeating:dic2];
+            [n dispatchOn:nid onDate:dic repeating:dic2];
         }
         else
         {
-            [NotificationClass dispatchOn:nid onDate:dic];
+            [n dispatchOn:nid onDate:dic];
         }
 	}
 	
 	void clear_local(){
-		[NotificationClass clearLocalNotifications];
+		[n clearLocalNotifications];
 	}
 	
 	void clear_push(){
-		[NotificationClass clearPushNotifications];
+		[n clearPushNotifications];
 	}
 	
 	gnotification_Group* get_scheduled(){
-        NSMutableDictionary *dic = [NotificationClass getScheduledNotifications];
+        NSMutableDictionary *dic = [n getScheduledNotifications];
 		return this->dic2group(dic);
 	}
 	
 	gnotification_Group* get_local(){
-        NSMutableDictionary *dic = [NotificationClass getLocalNotifications];
+        NSMutableDictionary *dic = [n getLocalNotifications];
 		return this->dic2group(dic);
 	}
 	
 	gnotification_Group* get_push(){
-        NSMutableDictionary *dic = [NotificationClass getPushNotifications];
+        NSMutableDictionary *dic = [n getPushNotifications];
 		return this->dic2group(dic);
 	}
 	
 	void register_push(const char *project){
-		[NotificationClass registerForPushNotifications];
+		[n registerForPushNotifications];
 	}
 	
 	void unregister_push(){
-		[NotificationClass unRegisterForPushNotifications];
+		[n unRegisterForPushNotifications];
 	}
 	
 	void ready_for_events(){
-		[NotificationClass readyForEvents];
+		[n readyForEvents];
 	}
 	
 	void onLocalNotification(int id, const char *title, const char *text, int number, const char *sound)
@@ -235,12 +238,11 @@ private:
 		((GNotification*)udata)->callback(type, event);
 	}
 	
-	static void onEnterFrame(int type, void *event, void *udata)
+	static void onAppStart(int type, void *event, void *udata)
 	{
-		if(type == GEVENT_PRE_TICK_EVENT || type == GEVENT_POST_TICK_EVENT)
+		if(type == GAPPLICATION_START_EVENT)
 		{
 			((GNotification*)udata)->ready_for_events();
-			gevent_RemoveCallback(onEnterFrame, udata);
 		}
 	}
 
@@ -254,6 +256,7 @@ private:
 
 private:
 	g_id gid_;
+    NotificationClass *n;
 	std::vector<gnotification_Group> group;
 };
 

@@ -98,6 +98,10 @@ public class NotificationClass extends BroadcastReceiver
 				mBuilder.soundPrefix = object.getString("soundPrefix");
 				mBuilder.mainClass = object.getString("mainClass");
 				mBuilder.icon = object.getInt("icon");
+				if(object.has("repeat"))
+    			{
+					mBuilder.shouldRepeat = true;
+    			}
 				dispatch(context, mBuilder, false);
 			} catch (JSONException e) {}
 		}
@@ -553,7 +557,10 @@ public class NotificationClass extends BroadcastReceiver
 		}
 		else
 		{
-			GNPersistent.delete(context, mBuilder.id, "NotificationData");
+			if(!mBuilder.shouldRepeat)
+			{
+				GNPersistent.delete(context, mBuilder.id, "NotificationData");
+			}
 			GNPersistent.safe(context, mBuilder, "NotificationLocal");
 		}
 
@@ -781,6 +788,7 @@ class GNotification{
 	public Calendar time = null;
 	public Calendar repeat = null;
 	public boolean isScheduled = false;
+	public boolean shouldRepeat = false;
 	
 	public Notification createNotification(Context context, PendingIntent intent){
 		

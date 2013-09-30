@@ -7,6 +7,8 @@
 #define abs_index(L, i) ((i) > 0 || (i) <= LUA_REGISTRYINDEX ? (i) : lua_gettop(L) + (i) + 1)
 #endif
 
+static lua_State *L = NULL;
+
 static void luaL_newweaktable(lua_State *L, const char *mode)
 {
 	lua_newtable(L);			// create table for instance list
@@ -66,7 +68,7 @@ static const char *PUSH_REGISTRATION_ERROR = "pushRegistrationError";
 class NotificationManager : public GEventDispatcherProxy
 {
 public:
-    NotificationManager(lua_State *L) : L(L)
+    NotificationManager()
     {
 		gnotification_addCallback(callback_s, this);
     }
@@ -135,101 +137,103 @@ private:
 	
 	void dispatchEvent(int type, void *event)
 	{
-        luaL_rawgetptr(L, LUA_REGISTRYINDEX, &keyWeak);
-        luaL_rawgetptr(L, -1, this);
+		if(L != NULL)
+		{
+			luaL_rawgetptr(L, LUA_REGISTRYINDEX, &keyWeak);
+			luaL_rawgetptr(L, -1, this);
+				
+			if (lua_isnil(L, -1))
+			{
+				lua_pop(L, 2);
+				return;
+			}
+			
+			lua_getfield(L, -1, "dispatchEvent");
+			
+			lua_pushvalue(L, -2);
+			
+			lua_getglobal(L, "Event");
+			lua_getfield(L, -1, "new");
+			lua_remove(L, -2);
+			
+			switch (type)
+			{
+				case NOTIFICATION_LOCAL_EVENT:
+					lua_pushstring(L, LOCAL_NOTIFICATION);
+					break;
+				case NOTIFICATION_PUSH_EVENT:
+					lua_pushstring(L, PUSH_NOTIFICATION);
+					break;
+				case NOTIFICATION_PUSH_REGISTER_EVENT:
+					lua_pushstring(L, PUSH_REGISTRATION);
+					break;
+				case NOTIFICATION_PUSH_REGISTER_ERROR_EVENT:
+					lua_pushstring(L, PUSH_REGISTRATION_ERROR);
+					break;
+			}
 		
-        if (lua_isnil(L, -1))
-        {
-            lua_pop(L, 2);
-            return;
-        }
-        
-        lua_getfield(L, -1, "dispatchEvent");
+			lua_call(L, 1, 1);
 		
-        lua_pushvalue(L, -2);
-        
-        lua_getglobal(L, "Event");
-        lua_getfield(L, -1, "new");
-        lua_remove(L, -2);
-        
-        switch (type)
-        {
-            case NOTIFICATION_LOCAL_EVENT:
-                lua_pushstring(L, LOCAL_NOTIFICATION);
-                break;
-            case NOTIFICATION_PUSH_EVENT:
-                lua_pushstring(L, PUSH_NOTIFICATION);
-                break;
-			case NOTIFICATION_PUSH_REGISTER_EVENT:
-                lua_pushstring(L, PUSH_REGISTRATION);
-                break;
-			case NOTIFICATION_PUSH_REGISTER_ERROR_EVENT:
-                lua_pushstring(L, PUSH_REGISTRATION_ERROR);
-                break;
-        }
-
-        lua_call(L, 1, 1);
-
-        if (type == NOTIFICATION_LOCAL_EVENT)
-        {
-            gnotification_LocalEvent *event2 = (gnotification_LocalEvent*)event;
-            
-			lua_pushnumber(L, event2->id);
-			lua_setfield(L, -2, "id");
-			
-			lua_pushstring(L, event2->title);
-			lua_setfield(L, -2, "title");
-			
-			lua_pushstring(L, event2->text);
-			lua_setfield(L, -2, "message");
-			
-			lua_pushnumber(L, event2->number);
-			lua_setfield(L, -2, "number");
-			
-			lua_pushstring(L, event2->sound);
-			lua_setfield(L, -2, "sound");
-        }
-		else if (type == NOTIFICATION_PUSH_EVENT)
-        {
-            gnotification_PushEvent *event2 = (gnotification_PushEvent*)event;
-            
-			lua_pushnumber(L, event2->id);
-			lua_setfield(L, -2, "id");
-			
-			lua_pushstring(L, event2->title);
-			lua_setfield(L, -2, "title");
-			
-			lua_pushstring(L, event2->text);
-			lua_setfield(L, -2, "message");
-			
-			lua_pushnumber(L, event2->number);
-			lua_setfield(L, -2, "number");
-			
-			lua_pushstring(L, event2->sound);
-			lua_setfield(L, -2, "sound");
-        }
-		else if (type == NOTIFICATION_PUSH_REGISTER_EVENT)
-        {
-            gnotification_RegisterPushEvent *event2 = (gnotification_RegisterPushEvent*)event;
-            
-			lua_pushstring(L, event2->regId);
-			lua_setfield(L, -2, "deviceId");
-        }
-		else if (type == NOTIFICATION_PUSH_REGISTER_ERROR_EVENT)
-        {
-            gnotification_RegisterPushErrorEvent *event2 = (gnotification_RegisterPushErrorEvent*)event;
-            
-			lua_pushstring(L, event2->errorId);
-			lua_setfield(L, -2, "error");
-        }
-
-		lua_call(L, 2, 0);
+			if (type == NOTIFICATION_LOCAL_EVENT)
+			{
+				gnotification_LocalEvent *event2 = (gnotification_LocalEvent*)event;
+				
+				lua_pushnumber(L, event2->id);
+				lua_setfield(L, -2, "id");
+				
+				lua_pushstring(L, event2->title);
+				lua_setfield(L, -2, "title");
+				
+				lua_pushstring(L, event2->text);
+				lua_setfield(L, -2, "message");
+				
+				lua_pushnumber(L, event2->number);
+				lua_setfield(L, -2, "number");
+				
+				lua_pushstring(L, event2->sound);
+				lua_setfield(L, -2, "sound");
+			}
+			else if (type == NOTIFICATION_PUSH_EVENT)
+			{
+				gnotification_PushEvent *event2 = (gnotification_PushEvent*)event;
+				
+				lua_pushnumber(L, event2->id);
+				lua_setfield(L, -2, "id");
+				
+				lua_pushstring(L, event2->title);
+				lua_setfield(L, -2, "title");
+				
+				lua_pushstring(L, event2->text);
+				lua_setfield(L, -2, "message");
+				
+				lua_pushnumber(L, event2->number);
+				lua_setfield(L, -2, "number");
+				
+				lua_pushstring(L, event2->sound);
+				lua_setfield(L, -2, "sound");
+			}
+			else if (type == NOTIFICATION_PUSH_REGISTER_EVENT)
+			{
+				gnotification_RegisterPushEvent *event2 = (gnotification_RegisterPushEvent*)event;
+				
+				lua_pushstring(L, event2->regId);
+				lua_setfield(L, -2, "deviceId");
+			}
+			else if (type == NOTIFICATION_PUSH_REGISTER_ERROR_EVENT)
+			{
+				gnotification_RegisterPushErrorEvent *event2 = (gnotification_RegisterPushErrorEvent*)event;
+				
+				lua_pushstring(L, event2->errorId);
+				lua_setfield(L, -2, "error");
+			}
 		
-		lua_pop(L, 2);
+			lua_call(L, 2, 0);
+			
+			lua_pop(L, 2);
+		}
 	}
 
 private:
-    lua_State *L;
     bool initialized_;
 };
 
@@ -403,7 +407,7 @@ static int unregisterForPush(lua_State *L)
 class Notification : public GProxy
 {
 public:
-    Notification(lua_State *L, int id) : L(L)
+    Notification(int id)
     {
 		id_ = id;
         gnotification_init(id_);
@@ -480,7 +484,6 @@ public:
 	}
 	
 private:
-    lua_State *L;
     bool initialized_;
 	int id_;
 	const char* title_;
@@ -513,7 +516,7 @@ static int init(lua_State *L)
 	if(lua_isnumber(L, 1))
 	{
 		int id = luaL_checkinteger(L, 1);
-		Notification *n = new Notification(L, id);
+		Notification *n = new Notification(id);
 		g_pushInstance(L, "Notification", n->object());
     
 		luaL_rawgetptr(L, LUA_REGISTRYINDEX, &keyWeak);
@@ -789,6 +792,7 @@ static int loader(lua_State *L)
     
 static void g_initializePlugin(lua_State *L)
 {
+	::L = L;
     lua_getglobal(L, "package");
 	lua_getfield(L, -1, "preload");
 	
@@ -799,11 +803,12 @@ static void g_initializePlugin(lua_State *L)
 	
 	gnotification_construct();
 	
-	manager = new NotificationManager(L);
+	manager = new NotificationManager();
 }
 
 static void g_deinitializePlugin(lua_State *L)
 {
+	::L = NULL;
 	manager->unref();
 	manager = NULL;
     gnotification_destroy();

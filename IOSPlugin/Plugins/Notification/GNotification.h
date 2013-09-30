@@ -7,6 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import "NotificationClass.h"
 
 @interface GNotification : NSObject
     @property int nid;
@@ -16,8 +17,9 @@
     @property (nonatomic, assign) NSString *body;
     @property (nonatomic, assign) NSString *sound;
     @property (nonatomic, assign) NSDate *ftime;
-    @property (nonatomic, assign) int repeat;
-
+    @property (nonatomic, assign) NSCalendarUnit repeat;
+    @property (nonatomic, assign) NotificationClass *caller;
+-(id)init:(NotificationClass*)caller;
 - (void) createNotification;
 
 

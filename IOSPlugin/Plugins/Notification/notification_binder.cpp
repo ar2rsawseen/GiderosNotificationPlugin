@@ -7,6 +7,8 @@
 #define abs_index(L, i) ((i) > 0 || (i) <= LUA_REGISTRYINDEX ? (i) : lua_gettop(L) + (i) + 1)
 #endif
 
+static lua_State *L = NULL;
+
 static void luaL_newweaktable(lua_State *L, const char *mode)
 {
 	lua_newtable(L);			// create table for instance list
@@ -66,7 +68,7 @@ static const char *PUSH_REGISTRATION_ERROR = "pushRegistrationError";
 class NotificationManager : public GEventDispatcherProxy
 {
 public:
-    NotificationManager(lua_State *L) : L(L)
+    NotificationManager()
     {
 		gnotification_addCallback(callback_s, this);
     }
@@ -229,7 +231,6 @@ private:
 	}
 
 private:
-    lua_State *L;
     bool initialized_;
 };
 
@@ -403,7 +404,7 @@ static int unregisterForPush(lua_State *L)
 class Notification : public GProxy
 {
 public:
-    Notification(lua_State *L, int id) : L(L)
+    Notification(int id)
     {
 		id_ = id;
         gnotification_init(id_);
@@ -480,7 +481,6 @@ public:
 	}
 	
 private:
-    lua_State *L;
     bool initialized_;
 	int id_;
 	const char* title_;
@@ -513,7 +513,7 @@ static int init(lua_State *L)
 	if(lua_isnumber(L, 1))
 	{
 		int id = luaL_checkinteger(L, 1);
-		Notification *n = new Notification(L, id);
+		Notification *n = new Notification(id);
 		g_pushInstance(L, "Notification", n->object());
     
 		luaL_rawgetptr(L, LUA_REGISTRYINDEX, &keyWeak);
@@ -790,6 +790,7 @@ static int loader(lua_State *L)
     
 static void g_initializePlugin(lua_State *L)
 {
+	::L = L;
     lua_getglobal(L, "package");
 	lua_getfield(L, -1, "preload");
 	
@@ -800,11 +801,12 @@ static void g_initializePlugin(lua_State *L)
 	
 	gnotification_construct();
 	
-	manager = new NotificationManager(L);
+	manager = new NotificationManager();
 }
 
 static void g_deinitializePlugin(lua_State *L)
 {
+	::L = NULL;
 	manager->unref();
 	manager = NULL;
     gnotification_destroy();

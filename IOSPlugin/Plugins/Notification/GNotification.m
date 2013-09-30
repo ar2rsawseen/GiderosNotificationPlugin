@@ -7,11 +7,10 @@
 //
 
 #import "GNotification.h"
-#import "NotificationClass.h"
 
 @implementation GNotification
 
--(GNotification*)init{
+-(id)init:(NotificationClass*)caller{
     self.nid = 0;
     self.number = 0;
     self.title = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleDisplayName"];
@@ -19,6 +18,8 @@
     self.sound = @"";
     self.repeat = 0;
     self.isDispatched = false;
+    self.caller = caller;
+    
 
     return self;
 }
@@ -27,7 +28,7 @@
 -(void)createNotification{
     if(self.isDispatched)
     {
-        [NotificationClass internalCancel:self.nid];
+        [self.caller internalCancel:self.nid];
     }
     UILocalNotification *notif = [[UILocalNotification alloc] init];
     notif.alertAction = self.title;
@@ -67,7 +68,7 @@
     notif.userInfo = userInfo;
     
     [[UIApplication sharedApplication] scheduleLocalNotification:notif];
-    [NotificationClass safe:self.nid title:self.title body:self.body sound:self.sound number:self.number inRepo:@"NotificationLocal"];
+    [self.caller safe:self.nid title:self.title body:self.body sound:self.sound number:self.number inRepo:@"NotificationLocal"];
 }
 
 @end

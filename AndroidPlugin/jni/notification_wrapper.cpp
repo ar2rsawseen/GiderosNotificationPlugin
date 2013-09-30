@@ -1,11 +1,19 @@
 #include <notification_wrapper.h>
 #include <jni.h>
+#include <gapplication.h>
 
 extern "C" {
 JavaVM *g_getJavaVM();
 JNIEnv *g_getJNIEnv();
 }
 
+static const char* getString(JNIEnv *env, jstring jstr)
+{
+	const char *str = env->GetStringUTFChars(jstr, NULL);
+	std::string result = str;
+	env->ReleaseStringUTFChars(jstr, str);
+	return result.c_str();
+}
 
 class GNotification
 {
@@ -31,7 +39,7 @@ public:
 		env->CallStaticVoidMethod(cls_, env->GetStaticMethodID(cls_, "construct", "(J)V"), (jlong)this);
 		
 		//subscribe to event
-		gevent_AddCallback(onEnterFrame, this);
+		gapplication_addCallback(onAppStart, this);
 	}
 
 	~GNotification()
@@ -45,6 +53,7 @@ public:
 		env->DeleteGlobalRef(clsSparse);
 		
 		gevent_RemoveEventsWithGid(gid_);
+		gapplication_removeCallback(onAppStart, this);
 	}
 	
 	void init(int id)
@@ -70,8 +79,8 @@ public:
 		JNIEnv *env = g_getJNIEnv();
 		
 		jstring js = (jstring)env->CallStaticObjectMethod(cls_, env->GetStaticMethodID(cls_, "getTitle", "(I)Ljava/lang/String;"), (jint)id);
-		const char *val = env->GetStringUTFChars(js, NULL);
-		return val;
+		//const char *val = env->GetStringUTFChars(js, NULL);
+		return getString(env, js);
 	}
 	
 	void set_body(int id, const char *body){
@@ -86,8 +95,8 @@ public:
 		JNIEnv *env = g_getJNIEnv();
 		
 		jstring js = (jstring)env->CallStaticObjectMethod(cls_, env->GetStaticMethodID(cls_, "getBody", "(I)Ljava/lang/String;"), (jint)id);
-		const char *val = env->GetStringUTFChars(js, NULL);
-		return val;
+		//const char *val = env->GetStringUTFChars(js, NULL);
+		return getString(env, js);
 	}
 	
 	void set_number(int id, int number){
@@ -115,8 +124,8 @@ public:
 		JNIEnv *env = g_getJNIEnv();
 		
 		jstring js = (jstring)env->CallStaticObjectMethod(cls_, env->GetStaticMethodID(cls_, "getSound", "(I)Ljava/lang/String;"), (jint)id);
-		const char *val = env->GetStringUTFChars(js, NULL);
-		return val;
+		//const char *val = env->GetStringUTFChars(js, NULL);
+		return getString(env, js);
 	}
 	
 	void dispatch_now(int id){
@@ -384,7 +393,7 @@ public:
 	struct gnotification_Group* map2group(jobject jmapobj)
 	{
 		JNIEnv *env = g_getJNIEnv();
-		int size = (int)env->CallObjectMethod(jmapobj, env->GetMethodID(clsSparse, "size", "()I"));
+		int size = (int)env->CallIntMethod(jmapobj, env->GetMethodID(clsSparse, "size", "()I"));
 		if(size == 0)
 		{
 			return NULL;
@@ -393,7 +402,7 @@ public:
 		group.clear();
 		
 		for (int i = 0; i < size; i++) {
-			int id = (int)env->CallObjectMethod(jmapobj, env->GetMethodID(clsSparse, "keyAt", "(I)I"), (jint)i);
+			int id = (int)env->CallIntMethod(jmapobj, env->GetMethodID(clsSparse, "keyAt", "(I)I"), (jint)i);
 			jobject jsubobj = env->CallObjectMethod(jmapobj, env->GetMethodID(clsSparse, "valueAt", "(I)Ljava/lang/Object;"), (jint)i);
 			
 			gnotification_Group gparam = {id, this->mapGetStr("title", jsubobj), this->mapGetStr("message", jsubobj), this->mapGetInt("number", jsubobj), this->mapGetStr("sound", jsubobj)};
@@ -428,12 +437,11 @@ private:
 		((GNotification*)udata)->callback(type, event);
 	}
 	
-	static void onEnterFrame(int type, void *event, void *udata)
+	static void onAppStart(int type, void *event, void *udata)
 	{
-		if(type == GEVENT_PRE_TICK_EVENT || type == GEVENT_POST_TICK_EVENT)
+		if(type == GAPPLICATION_START_EVENT)
 		{
 			((GNotification*)udata)->ready_for_events();
-			gevent_RemoveCallback(onEnterFrame, udata);
 		}
 	}
 

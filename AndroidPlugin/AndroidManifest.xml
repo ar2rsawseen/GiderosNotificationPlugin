@@ -37,7 +37,7 @@
                 <action android:name="com.android.vending.billing.PURCHASE_STATE_CHANGED" />
             </intent-filter>
         </receiver>
-        <receiver android:name="com.giderosmobile.android.plugins.notification.NotificationClass"></receiver>
+        <receiver android:process=":remote" android:name="com.giderosmobile.android.plugins.notification.NotificationClass"></receiver>
         <receiver android:name="com.giderosmobile.android.plugins.notification.NotificationRestore" >
    			<intent-filter>
         		<action android:name="android.intent.action.BOOT_COMPLETED" />

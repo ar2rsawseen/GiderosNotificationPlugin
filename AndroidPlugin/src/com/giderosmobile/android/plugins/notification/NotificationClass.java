@@ -37,11 +37,42 @@ public class NotificationClass extends BroadcastReceiver
 	private static String appName;
 	private static String pathPrefix;
 	private static NotificationManager mNotificationManager;
-	private static boolean canDispatch = false;
-	private static long sData;
+	private static volatile boolean canDispatch = false;
+	private static volatile boolean inBackground = true;
+	private static volatile long sData = 0;
+	
+	/*private static synchronized void setDispatch(boolean state){
+		canDispatch = state;
+		Log.d("Notification", "Dispatch change: " + canDispatch);
+	}
+	
+	private static synchronized boolean getDispatch(){
+		Log.d("Notification", "Dispatch retrieve: " + canDispatch);
+		return canDispatch;
+	}
+	
+	private static synchronized void setBackground(boolean state){
+		inBackground = state;
+		Log.d("Notification", "Background change: " + inBackground);
+	}
+	
+	private static synchronized boolean getBackground(){
+		Log.d("Notification", "Background retrieve: " + inBackground);
+		return inBackground;
+	}
+	
+	private static synchronized void setData(long data){
+		sData = data;
+		Log.d("Notification", "Data changed: " + sData);
+	}
+	
+	private static synchronized long getData(){
+		Log.d("Notification", "Data retrieved: " + sData + " with activity " + sActivity);
+		return sData;
+	}*/
 	
 	//application events
- 	public static void onCreate(Activity activity)
+	public static void onCreate(Activity activity)
 	{
 		//reference to activity
 		sActivity =  new WeakReference<Activity>(activity);
@@ -107,9 +138,14 @@ public class NotificationClass extends BroadcastReceiver
 		}
 		
 	}
+
+	public static void onPause(){
+		inBackground = true;
+	}
 	
 	public static void onResume()
 	{	
+		inBackground = false;
 		Intent intent = sActivity.get().getIntent();
 		if(intent != null)
 		{
@@ -153,10 +189,12 @@ public class NotificationClass extends BroadcastReceiver
 	static public void construct(long data)
 	{
 		sData = data;
+		canDispatch = false;
 	}
 	
 	static public void destruct()
 	{
+		canDispatch = false;
     	sData = 0;
 	}
 	
@@ -563,15 +601,28 @@ public class NotificationClass extends BroadcastReceiver
 			}
 			GNPersistent.safe(context, mBuilder, "NotificationLocal");
 		}
-
-		Notification builder = mBuilder.createNotification(context, resultPendingIntent);
 		
-		if(mNotificationManager == null){
-			//get notification manager service
-			mNotificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+		if(!inBackground && canDispatch){
+			if(push)
+			{
+				onPushNotification(mBuilder.id, mBuilder.title, mBuilder.message, mBuilder.number, mBuilder.sound);
+			}
+			else
+			{
+				onLocalNotification(mBuilder.id, mBuilder.title, mBuilder.message, mBuilder.number, mBuilder.sound);
+			}
 		}
+		else
+		{
+			Notification builder = mBuilder.createNotification(context, resultPendingIntent);
+			
+			if(mNotificationManager == null){
+				//get notification manager service
+				mNotificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+			}
 
-		mNotificationManager.notify(mBuilder.id, builder);
+			mNotificationManager.notify(mBuilder.id, builder);
+		}
 
 	}
 	
@@ -821,6 +872,7 @@ class GNotification{
 			} catch(Exception e){}
 		}
 		mBuilder.setLatestEventInfo(context, title, message, intent);
+		mBuilder.flags = Notification.FLAG_AUTO_CANCEL;
 		return mBuilder;
 	}
 }

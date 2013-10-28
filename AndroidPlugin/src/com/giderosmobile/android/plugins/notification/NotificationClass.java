@@ -343,6 +343,12 @@ public class NotificationClass extends BroadcastReceiver
 		for(int i = 0; i < size; i++) {
 			cancel(mBuilders.keyAt(i));
 		}
+		
+		// Clear all notification
+		NotificationManager nMgr = (NotificationManager) sActivity.get().getSystemService(Context.NOTIFICATION_SERVICE);
+		nMgr.cancelAll();
+		
+		GNPersistent.deleteAll(sActivity.get(), "NotificationData");
 	}
 	
 	public static void registerForPushNotifications(String projectID){
@@ -815,10 +821,11 @@ class GNotification{
 		
 		//create notification builder
 		Notification mBuilder = new Notification(icon, title, System.currentTimeMillis());
+		mBuilder.defaults |= Notification.DEFAULT_VIBRATE;
 		if(number > 0){
 			mBuilder.number = number;
 		}
-		if(sound == "default")
+		if(sound.equals("") || sound.equals("default"))
 		{
 			mBuilder.defaults |= Notification.DEFAULT_SOUND;
 		}

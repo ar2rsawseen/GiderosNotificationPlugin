@@ -34,7 +34,7 @@
 </li>
 <li>Add services and receivers to application tag (replace com.yourdomain.yourapp with your bundle name) example manifest included:
 <ul>
-<li><pre>&lt;receiver android:process=":remote" android:name="com.giderosmobile.android.plugins.notification.NotificationClass"&gt;&lt;/receiver&gt;</pre></li>
+<li><pre>&lt;receiver android:name="com.giderosmobile.android.plugins.notification.NotificationClass"&gt;&lt;/receiver&gt;</pre></li>
 <li><pre>&lt;receiver android:name="com.giderosmobile.android.plugins.notification.NotificationRestore" &gt;
    	&lt;intent-filter&gt;
     	&lt;action android:name="android.intent.action.BOOT_COMPLETED" /&gt;

@@ -27,6 +27,8 @@
 -(NSString*)getBody:(int) nid;
 -(void)setSound:(NSString*)sound withID:(int) nid;
 -(NSString*)getSound:(int) nid;
+-(void)setCustom:(NSString*)custom withID:(int) nid;
+-(NSString*)getCustom:(int) nid;
 -(void)setNumber:(int)number withID:(int) nid;
 -(int)getNumber:(int) nid;
 
@@ -47,8 +49,8 @@
 
 -(void)onPreLocalHandler: (NSNotification*) note;
 -(void)onPrePushHandler: (NSNotification*) note;
--(void)onLocalHandler: (UILocalNotification*) note;
--(void)onPushHandler: (NSDictionary*) note;
+-(void)onLocalHandler: (UILocalNotification*) note wasLaunched:(NSNumber *)launched;
+-(void)onPushHandler: (NSDictionary*) note wasLaunched:(NSNumber *)launched;
 -(void)onPushRegistration: (NSNotification*) n;
 -(void)onPushError: (NSNotification*) n;
 
@@ -58,7 +60,7 @@
 -(void)clearLocalNotifications;
 -(void)clearPushNotifications;
 
--(void)safe:(int)nid title:(NSString*)title body:(NSString*)body sound:(NSString*)sound number:(int)number inRepo:(NSString*) repo;
+-(void)safe:(int)nid title:(NSString*)title body:(NSString*)body sound:(NSString*)sound number:(int)number custom:(NSString*)custom launched:(NSNumber *)launched inRepo:(NSString*) repo;
 -(void)internalCancel:(int) nid;
 
 @end

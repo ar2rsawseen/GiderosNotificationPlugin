@@ -25,6 +25,7 @@ import android.content.res.AssetFileDescriptor;
 import android.content.res.Resources;
 import android.media.MediaPlayer;
 import android.os.Bundle;
+
 import android.util.SparseArray;
 
 public class NotificationClass extends BroadcastReceiver 
@@ -96,6 +97,7 @@ public class NotificationClass extends BroadcastReceiver
 				mBuilder.message = object.getString("message");
 				mBuilder.number = object.getInt("number");
 				mBuilder.sound = object.getString("sound");
+				mBuilder.customData = object.getString("custom");
 				mBuilder.soundPrefix = object.getString("soundPrefix");
 				mBuilder.mainClass = object.getString("mainClass");
 				mBuilder.icon = object.getInt("icon");
@@ -128,12 +130,13 @@ public class NotificationClass extends BroadcastReceiver
 					String text = bundle.getString("message");
 					int number = bundle.getInt("number");
 					String sound = bundle.getString("sound");
+					String custom = bundle.getString("custom");
 					if(canDispatch){
-						onPushNotification(id, title, text, number, sound);
+						onPushNotification(id, title, text, number, sound, custom, true);
 					}
 					else
 					{
-						GNPersistent.saveEvent(sActivity.get(), "NotificationPushEvent", id, title, text, number, sound);
+						GNPersistent.saveEvent(sActivity.get(), "NotificationPushEvent", id, title, text, number, sound, custom, true);
 					}
 				}
 				else
@@ -144,12 +147,13 @@ public class NotificationClass extends BroadcastReceiver
 					String text = bundle.getString("message");
 					int number = bundle.getInt("number");
 					String sound = bundle.getString("sound");
+					String custom = bundle.getString("custom");
 					if(canDispatch){
-						onLocalNotification(id, title, text, number, sound);
+						onLocalNotification(id, title, text, number, sound, custom, true);
 					}
 					else
 					{
-						GNPersistent.saveEvent(sActivity.get(), "NotificationLocalEvent", id, title, text, number, sound);
+						GNPersistent.saveEvent(sActivity.get(), "NotificationLocalEvent", id, title, text, number, sound, custom, true);
 					}
 				}
 			}
@@ -187,6 +191,7 @@ public class NotificationClass extends BroadcastReceiver
 					mBuilder.message = object.getString("message");
 					mBuilder.number = object.getInt("number");
 					mBuilder.sound = object.getString("sound");
+					mBuilder.customData = object.getString("custom");
 					mBuilder.mainClass = object.getString("mainClass");
 					mBuilder.icon = object.getInt("icon");
 				} catch (JSONException e) {}
@@ -330,6 +335,36 @@ public class NotificationClass extends BroadcastReceiver
 			sound = mBuilder.sound;
 		}
 		return sound;
+	}
+	
+	public static void setCustom(int id, String custom){
+		if(mBuilders.get(id) != null)
+		{
+			GNotification mBuilder = mBuilders.get(id);
+			mBuilder.customData = custom;
+			if(mBuilder.isScheduled)
+			{
+				GNPersistent.safe(sActivity.get(), mBuilder, "NotificationData");
+			}
+		}
+		else
+		{
+			JSONObject object = GNPersistent.get(sActivity.get(), "NotificationData", id+"");
+			if(object != null)
+			{
+				init(id);
+			}
+		}
+	}
+	
+	public static String getCustom(int id){
+		String custom = "";
+		if(mBuilders.get(id) != null)
+		{
+			GNotification mBuilder = mBuilders.get(id);
+			custom = mBuilder.customData;
+		}
+		return custom;
 	}
 	
 	public static void cancel(int id){
@@ -558,6 +593,7 @@ public class NotificationClass extends BroadcastReceiver
 		resultIntent.putExtra("message", mBuilder.message);
 		resultIntent.putExtra("number", mBuilder.number);
 		resultIntent.putExtra("sound", mBuilder.sound);
+		resultIntent.putExtra("custom", mBuilder.customData);
 
 		if(push)
 		{
@@ -581,11 +617,11 @@ public class NotificationClass extends BroadcastReceiver
 		if(!inBackground && canDispatch){
 			if(push)
 			{
-				onPushNotification(mBuilder.id, mBuilder.title, mBuilder.message, mBuilder.number, mBuilder.sound);
+				onPushNotification(mBuilder.id, mBuilder.title, mBuilder.message, mBuilder.number, mBuilder.sound, mBuilder.customData, false);
 			}
 			else
 			{
-				onLocalNotification(mBuilder.id, mBuilder.title, mBuilder.message, mBuilder.number, mBuilder.sound);
+				onLocalNotification(mBuilder.id, mBuilder.title, mBuilder.message, mBuilder.number, mBuilder.sound, mBuilder.customData, false);
 			}
 		}
 		else
@@ -641,13 +677,15 @@ public class NotificationClass extends BroadcastReceiver
 	    		String text = object.getString("message");
 	    		int number = object.getInt("number");
 	    		String sound = object.getString("sound");
+	    		String custom = object.getString("custom");
+	    		boolean didOpen = object.getBoolean("didOpen");
 	    		if(repo.equals("NotificationLocalEvent"))
 	    		{
-	    			onLocalNotification(id, title, text, number, sound);
+	    			onLocalNotification(id, title, text, number, sound, custom, didOpen);
 	    		}
 	    		else if(repo.equals("NotificationPushEvent"))
 	    		{
-	    			onPushNotification(id, title, text, number, sound);
+	    			onPushNotification(id, title, text, number, sound, custom, didOpen);
 	    		}
 			} catch (JSONException e) {}
     	}
@@ -659,13 +697,13 @@ public class NotificationClass extends BroadcastReceiver
 	}
 	
 	//Internal event check
-	public static void onLocalNotification(int id, String title, String text, int number, String sound){
+	public static void onLocalNotification(int id, String title, String text, int number, String sound, String custom, boolean didOpen){
 		if (sData != 0)
-			onLocalNotification(id, title, text, number, sound, sData);
+			onLocalNotification(id, title, text, number, sound, custom, didOpen, sData);
 	}
-	public static void onPushNotification(int id, String title, String text, int number, String sound){
+	public static void onPushNotification(int id, String title, String text, int number, String sound, String custom, boolean didOpen){
 		if (sData != 0)
-			onPushNotification(id, title, text, number, sound, sData);
+			onPushNotification(id, title, text, number, sound, custom, didOpen, sData);
 	}
 	public static void onPushRegistration(String registrationId){
 		if (sData != 0)
@@ -690,8 +728,8 @@ public class NotificationClass extends BroadcastReceiver
 	public static native String transformPath(String path, long data);
 	
 	//Gideros events
-	private static native void onLocalNotification(int id, String title, String text, int number, String sound, long data);
-	private static native void onPushNotification(int id, String title, String text, int number, String sound, long data);
+	private static native void onLocalNotification(int id, String title, String text, int number, String sound, String custom, boolean didOpen, long data);
+	private static native void onPushNotification(int id, String title, String text, int number, String sound, String custom, boolean didOpen, long data);
 	private static native void onPushRegistration(String registrationId, long data);
 	private static native void onPushRegistrationError(String errorId, long data);
 	
@@ -709,6 +747,7 @@ class GNPersistent
 			object.put("message", mBuilder.message);
 			object.put("number", mBuilder.number);
 			object.put("sound", mBuilder.sound);
+			object.put("custom", mBuilder.customData);
 			object.put("soundPrefix", mBuilder.soundPrefix);
 			object.put("mainClass", mBuilder.mainClass);
 			object.put("icon", mBuilder.icon);
@@ -732,7 +771,7 @@ class GNPersistent
 		
 	}
 	
-	public static void saveEvent(Context ctx, String repo, int id, String title, String text, int number, String sound){
+	public static void saveEvent(Context ctx, String repo, int id, String title, String text, int number, String sound, String custom, boolean didOpen){
 		
 		JSONObject object = new JSONObject();
 		try {
@@ -742,6 +781,8 @@ class GNPersistent
 			object.put("message", text);
 			object.put("number", number);
 			object.put("sound", sound);
+			object.put("custom", custom);
+			object.put("didOpen", didOpen);
 
 		} catch (JSONException e) {}
 		
@@ -783,6 +824,7 @@ class GNPersistent
 				temp.putString("message", object.getString("message"));
 				temp.putInt("number", Integer.parseInt(object.getString("number")));
 				temp.putString("sound", object.getString("sound"));
+				temp.putString("custom", object.getString("custom"));
 			} catch (JSONException e) {}
 		    
 		    arr.put(Integer.parseInt(alarmId), temp);
@@ -812,10 +854,12 @@ class GNotification{
 	public String message = "";
 	public String sound = "";
 	public String soundPrefix = "";
+	public String customData = "";
 	public Calendar time = null;
 	public Calendar repeat = null;
 	public boolean isScheduled = false;
 	public boolean shouldRepeat = false;
+	public boolean didOpen = false;
 	
 	public Notification createNotification(Context context, PendingIntent intent){
 		

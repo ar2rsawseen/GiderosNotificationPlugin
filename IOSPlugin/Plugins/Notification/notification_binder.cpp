@@ -122,9 +122,9 @@ public:
 	{
 		gnotification_unregister_push();
 	}
-
+    
 private:
-
+    
 	static void callback_s(int type, void *event, void *udata)
 	{
 		((NotificationManager*)udata)->callback(type, event);
@@ -137,99 +137,114 @@ private:
 	
 	void dispatchEvent(int type, void *event)
 	{
-        luaL_rawgetptr(L, LUA_REGISTRYINDEX, &keyWeak);
-        luaL_rawgetptr(L, -1, this);
-		
-        if (lua_isnil(L, -1))
-        {
-            lua_pop(L, 2);
-            return;
-        }
-        
-        lua_getfield(L, -1, "dispatchEvent");
-		
-        lua_pushvalue(L, -2);
-        
-        lua_getglobal(L, "Event");
-        lua_getfield(L, -1, "new");
-        lua_remove(L, -2);
-        
-        switch (type)
-        {
-            case NOTIFICATION_LOCAL_EVENT:
-                lua_pushstring(L, LOCAL_NOTIFICATION);
-                break;
-            case NOTIFICATION_PUSH_EVENT:
-                lua_pushstring(L, PUSH_NOTIFICATION);
-                break;
-			case NOTIFICATION_PUSH_REGISTER_EVENT:
-                lua_pushstring(L, PUSH_REGISTRATION);
-                break;
-			case NOTIFICATION_PUSH_REGISTER_ERROR_EVENT:
-                lua_pushstring(L, PUSH_REGISTRATION_ERROR);
-                break;
-        }
-
-        lua_call(L, 1, 1);
-
-        if (type == NOTIFICATION_LOCAL_EVENT)
-        {
-            gnotification_LocalEvent *event2 = (gnotification_LocalEvent*)event;
+		if(L != NULL)
+		{
+			luaL_rawgetptr(L, LUA_REGISTRYINDEX, &keyWeak);
+			luaL_rawgetptr(L, -1, this);
             
-			lua_pushnumber(L, event2->id);
-			lua_setfield(L, -2, "id");
+			if (lua_isnil(L, -1))
+			{
+				lua_pop(L, 2);
+				return;
+			}
 			
-			lua_pushstring(L, event2->title);
-			lua_setfield(L, -2, "title");
+			lua_getfield(L, -1, "dispatchEvent");
 			
-			lua_pushstring(L, event2->text);
-			lua_setfield(L, -2, "message");
+			lua_pushvalue(L, -2);
 			
-			lua_pushnumber(L, event2->number);
-			lua_setfield(L, -2, "number");
+			lua_getglobal(L, "Event");
+			lua_getfield(L, -1, "new");
+			lua_remove(L, -2);
 			
-			lua_pushstring(L, event2->sound);
-			lua_setfield(L, -2, "sound");
-        }
-		else if (type == NOTIFICATION_PUSH_EVENT)
-        {
-            gnotification_PushEvent *event2 = (gnotification_PushEvent*)event;
+			switch (type)
+			{
+				case NOTIFICATION_LOCAL_EVENT:
+					lua_pushstring(L, LOCAL_NOTIFICATION);
+					break;
+				case NOTIFICATION_PUSH_EVENT:
+					lua_pushstring(L, PUSH_NOTIFICATION);
+					break;
+				case NOTIFICATION_PUSH_REGISTER_EVENT:
+					lua_pushstring(L, PUSH_REGISTRATION);
+					break;
+				case NOTIFICATION_PUSH_REGISTER_ERROR_EVENT:
+					lua_pushstring(L, PUSH_REGISTRATION_ERROR);
+					break;
+			}
             
-			lua_pushnumber(L, event2->id);
-			lua_setfield(L, -2, "id");
-			
-			lua_pushstring(L, event2->title);
-			lua_setfield(L, -2, "title");
-			
-			lua_pushstring(L, event2->text);
-			lua_setfield(L, -2, "message");
-			
-			lua_pushnumber(L, event2->number);
-			lua_setfield(L, -2, "number");
-			
-			lua_pushstring(L, event2->sound);
-			lua_setfield(L, -2, "sound");
-        }
-		else if (type == NOTIFICATION_PUSH_REGISTER_EVENT)
-        {
-            gnotification_RegisterPushEvent *event2 = (gnotification_RegisterPushEvent*)event;
+			lua_call(L, 1, 1);
             
-			lua_pushstring(L, event2->regId);
-			lua_setfield(L, -2, "deviceId");
-        }
-		else if (type == NOTIFICATION_PUSH_REGISTER_ERROR_EVENT)
-        {
-            gnotification_RegisterPushErrorEvent *event2 = (gnotification_RegisterPushErrorEvent*)event;
+			if (type == NOTIFICATION_LOCAL_EVENT)
+			{
+				gnotification_LocalEvent *event2 = (gnotification_LocalEvent*)event;
+				
+				lua_pushnumber(L, event2->id);
+				lua_setfield(L, -2, "id");
+				
+				lua_pushstring(L, event2->title);
+				lua_setfield(L, -2, "title");
+				
+				lua_pushstring(L, event2->text);
+				lua_setfield(L, -2, "message");
+				
+				lua_pushnumber(L, event2->number);
+				lua_setfield(L, -2, "number");
+				
+				lua_pushstring(L, event2->sound);
+				lua_setfield(L, -2, "sound");
+				
+				lua_pushstring(L, event2->custom);
+				lua_setfield(L, -2, "custom");
+				
+				lua_pushboolean(L, event2->didOpen);
+				lua_setfield(L, -2, "didOpen");
+			}
+			else if (type == NOTIFICATION_PUSH_EVENT)
+			{
+				gnotification_PushEvent *event2 = (gnotification_PushEvent*)event;
+				
+				lua_pushnumber(L, event2->id);
+				lua_setfield(L, -2, "id");
+				
+				lua_pushstring(L, event2->title);
+				lua_setfield(L, -2, "title");
+				
+				lua_pushstring(L, event2->text);
+				lua_setfield(L, -2, "message");
+				
+				lua_pushnumber(L, event2->number);
+				lua_setfield(L, -2, "number");
+				
+				lua_pushstring(L, event2->sound);
+				lua_setfield(L, -2, "sound");
+				
+				lua_pushstring(L, event2->custom);
+				lua_setfield(L, -2, "custom");
+				
+				lua_pushboolean(L, event2->didOpen);
+				lua_setfield(L, -2, "didOpen");
+			}
+			else if (type == NOTIFICATION_PUSH_REGISTER_EVENT)
+			{
+				gnotification_RegisterPushEvent *event2 = (gnotification_RegisterPushEvent*)event;
+				
+				lua_pushstring(L, event2->regId);
+				lua_setfield(L, -2, "deviceId");
+			}
+			else if (type == NOTIFICATION_PUSH_REGISTER_ERROR_EVENT)
+			{
+				gnotification_RegisterPushErrorEvent *event2 = (gnotification_RegisterPushErrorEvent*)event;
+				
+				lua_pushstring(L, event2->errorId);
+				lua_setfield(L, -2, "error");
+			}
             
-			lua_pushstring(L, event2->errorId);
-			lua_setfield(L, -2, "error");
-        }
-
-		lua_call(L, 2, 0);
-		
-		lua_pop(L, 2);
+			lua_call(L, 2, 0);
+			
+			lua_pop(L, 2);
+		}
 	}
-
+    
 private:
     bool initialized_;
 };
@@ -258,7 +273,7 @@ NotificationManager *manager;
 
 static int init_mngr(lua_State *L)
 {
-
+    
 	g_pushInstance(L, "NotificationManager", manager->object());
     
 	luaL_rawgetptr(L, LUA_REGISTRYINDEX, &keyWeak);
@@ -317,10 +332,10 @@ void group2table(gnotification_Group *group, lua_State* L)
 		{
 			//set subtable to table
 			lua_pushinteger(L, group->id);
-		
+            
 			//create sub table
 			lua_newtable(L);
-	
+            
 			//set key
 			lua_pushstring(L, "id");
 			lua_pushnumber(L, group->id);
@@ -348,6 +363,12 @@ void group2table(gnotification_Group *group, lua_State* L)
 			//set key
 			lua_pushstring(L, "sound");
 			lua_pushstring(L, group->sound);
+			//back to table
+			lua_settable(L, -3);
+			
+			//set key
+			lua_pushstring(L, "custom");
+			lua_pushstring(L, group->custom);
 			//back to table
 			lua_settable(L, -3);
 			
@@ -455,6 +476,16 @@ public:
 		return gnotification_get_sound(id_);
 	}
 	
+	void setCustom(const char *custom)
+	{
+		gnotification_set_custom(id_, custom);
+	}
+	
+	const char* getCustom()
+	{
+		return gnotification_get_custom(id_);
+	}
+	
 	void dispatchNow()
 	{
 		gnotification_dispatch_now(id_);
@@ -515,16 +546,15 @@ static int init(lua_State *L)
 		int id = luaL_checkinteger(L, 1);
 		Notification *n = new Notification(id);
 		g_pushInstance(L, "Notification", n->object());
-    
+        
 		luaL_rawgetptr(L, LUA_REGISTRYINDEX, &keyWeak);
 		lua_pushvalue(L, -2);
 		luaL_rawsetptr(L, -2, n);
 		lua_pop(L, 1);
-	
+        
 		lua_pushvalue(L, -1);
 		return 1;
 	}
-    return 0;
 }
 
 static int setTitle(lua_State *L)
@@ -593,6 +623,28 @@ static int getSound(lua_State *L)
     return 1;
 }
 
+static int setCustom(lua_State *L)
+{
+    Notification *n = getInstance(L, 1);
+    
+    const char *custom = luaL_checkstring(L, 2);
+    
+    n->setCustom(custom);
+    
+    return 0;
+}
+
+static int getCustom(lua_State *L)
+{
+    Notification *n = getInstance(L, 1);
+    
+    const char *custom =  n->getCustom();
+	
+	lua_pushstring(L, custom);
+    
+    return 1;
+}
+
 static int setNumber(lua_State *L)
 {
     Notification *n = getInstance(L, 1);
@@ -629,9 +681,9 @@ static int dispatchAfter(lua_State *L)
     Notification *n = getInstance(L, 1);
 	
 	std::map<std::string, std::string> params = tableToMap(L, 2);
-
+    
 	std::vector<gnotification_Parameter> params2;
-        
+    
 	std::map<std::string, std::string>::iterator iter, e = params.end();
 	for (iter = params.begin(); iter != e; ++iter)
 	{
@@ -648,7 +700,7 @@ static int dispatchAfter(lua_State *L)
 	else
 	{
 		std::map<std::string, std::string> paramsR = tableToMap(L, 2);
-
+        
 		std::vector<gnotification_Parameter> paramsR2;
         
 		std::map<std::string, std::string>::iterator iter, e = paramsR.end();
@@ -671,9 +723,9 @@ static int dispatchOn(lua_State *L)
     Notification *n = getInstance(L, 1);
     
     std::map<std::string, std::string> params = tableToMap(L, 2);
-
+    
 	std::vector<gnotification_Parameter> params2;
-        
+    
 	std::map<std::string, std::string>::iterator iter, e = params.end();
 	for (iter = params.begin(); iter != e; ++iter)
 	{
@@ -690,7 +742,7 @@ static int dispatchOn(lua_State *L)
 	else
 	{
 		std::map<std::string, std::string> paramsR = tableToMap(L, 2);
-
+        
 		std::vector<gnotification_Parameter> paramsR2;
         
 		std::map<std::string, std::string>::iterator iter, e = paramsR.end();
@@ -738,6 +790,8 @@ static int loader(lua_State *L)
         {"getMessage", getBody},
         {"setSound", setSound},
         {"getSound", getSound},
+		{"setCustom", setCustom},
+        {"getCustom", getCustom},
         {"setNumber", setNumber},
         {"getNumber", getNumber},
         {"dispatchNow", dispatchNow},
@@ -787,7 +841,7 @@ static int loader(lua_State *L)
     
     return 0;
 }
-    
+
 static void g_initializePlugin(lua_State *L)
 {
 	::L = L;

@@ -21,7 +21,11 @@ public class NotificationActivity extends Activity implements OnTouchListener
 {
 	static
 	{
+		System.loadLibrary("zlib");
+		System.loadLibrary("gvfs");
+		System.loadLibrary("lua");
 		System.loadLibrary("gideros");
+
 		System.loadLibrary("notification");
 	}
 
@@ -33,6 +37,12 @@ public class NotificationActivity extends Activity implements OnTouchListener
 
 	private boolean mHasFocus = false;
 	private boolean mPlaying = false;
+	
+	@Override
+	protected void onNewIntent(Intent intent) {
+	    super.onNewIntent(intent);
+	    setIntent(intent);
+	}
 		
 	@Override
 	public void onCreate(Bundle savedInstanceState)
@@ -46,12 +56,6 @@ public class NotificationActivity extends Activity implements OnTouchListener
 		WeakActivityHolder.set(this);
 
 		GiderosApplication.onCreate(externalClasses);
-	}
-	
-	@Override
-	protected void onNewIntent(Intent intent) {
-	    super.onNewIntent(intent);
-	    setIntent(intent);
 	}
 
 	int[] id = new int[256];

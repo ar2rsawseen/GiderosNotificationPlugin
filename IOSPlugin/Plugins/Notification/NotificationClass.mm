@@ -9,6 +9,25 @@
 #import "GNotification.h"
 #include "notification_wrapper.h"
 
+@interface NSString (NSArrayFormatExtension)
+
++ (id)stringWithFormat:(NSString *)format array:(NSArray*) arguments;
+
+@end
+
+@implementation NSString (NSArrayFormatExtension)
+
++ (id)stringWithFormat:(NSString *)format array:(NSArray*) arguments;
+{
+    char *argList = (char *)malloc(sizeof(NSString *) * [arguments count]);
+    [arguments getObjects:(id *)argList];
+    NSString* result = [[[NSString alloc] initWithFormat:format arguments:argList] autorelease];
+    free(argList);
+    return result;
+}
+
+@end
+
 @implementation NotificationClass
 
 static bool canDispatch = false;
@@ -17,8 +36,6 @@ static bool canDispatch = false;
     self.notifics = [NSMutableDictionary dictionary];
     //subscribe to events
     NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
-    [center addObserver:self selector:@selector(onLocalHandler) name:UIApplicationLaunchOptionsLocalNotificationKey object:nil];
-    [center addObserver:self selector:@selector(onPushHandler) name:UIApplicationLaunchOptionsRemoteNotificationKey object:nil];
     [center addObserver:self selector:@selector(onActive) name:UIApplicationDidBecomeActiveNotification object:nil];
     
     [center addObserver:self selector:@selector(onPushRegistration:) name:@"onPushRegistration" object:nil];
@@ -29,6 +46,24 @@ static bool canDispatch = false;
 }
 
 -(void)onActive{
+    // Look for any local or remote notifications that launched the app.  If found
+    // nil them out so we don't pick them up a second time.
+    id<UIApplicationDelegate> app = [UIApplication sharedApplication].delegate;
+    UILocalNotification *launchLocalNotification = [app performSelector:@selector(launchLocalNotification)];
+    
+    if (launchLocalNotification) {
+        [self onLocalHandler:launchLocalNotification wasLaunched:[NSNumber numberWithBool:TRUE]];
+        [app performSelector:@selector(setLaunchLocalNotification:) withObject:nil];
+    }
+    
+    NSDictionary *launchRemoteNotification = [app performSelector:@selector(launchRemoteNotification)];
+    
+    if (launchRemoteNotification) {
+        [self onPushHandler:launchRemoteNotification wasLaunched:[NSNumber numberWithBool:TRUE]];
+        [app performSelector:@selector(setLaunchRemoteNotification:) withObject:nil];
+    }
+    
+    // Clear the application badge.
     [UIApplication sharedApplication].applicationIconBadgeNumber = 0;
 }
 
@@ -56,6 +91,7 @@ static bool canDispatch = false;
         note.title = [dic objectForKey:@"title"];
         note.body = [dic objectForKey:@"body"];
         note.sound = [dic objectForKey:@"sound"];
+        note.customData = [dic objectForKey:@"custom"];
         note.number = [[dic objectForKey:@"title"] intValue];
     }
     [self.notifics setObject:note forKey:[NSString stringWithFormat:@"%d", nid]];
@@ -111,6 +147,21 @@ static bool canDispatch = false;
     GNotification *note = [self.notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
     if(note != NULL){
         return note.sound;
+    }
+    return @"";
+}
+
+-(void)setCustom:(NSString *)custom withID:(int)nid{
+    GNotification *note = [self.notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
+    if(note != NULL){
+        note.customData = custom;
+    }
+}
+
+-(NSString*)getCustom:(int) nid{
+    GNotification *note = [self.notifics objectForKey:[NSString stringWithFormat:@"%d", nid]];
+    if(note != NULL){
+        return note.customData;
     }
     return @"";
 }
@@ -256,18 +307,28 @@ static bool canDispatch = false;
 
 -(void)onPreLocalHandler: (NSNotification*) note{
     if (note) {
-        [self onLocalHandler:[[note userInfo] objectForKey:@"notification"]];
+        NSNumber *launched = [[note userInfo] objectForKey:@"launched"];
+        [self onLocalHandler:[[note userInfo] objectForKey:@"notification"] wasLaunched:launched];
     }
 }
 
 -(void)onPrePushHandler: (NSNotification*) note{
     if (note) {
-        [self onPushHandler:[note userInfo]];
+        NSDictionary *payload = [[note userInfo] objectForKey:@"payload"];
+        NSNumber *launched = [[note userInfo] objectForKey:@"launched"];
+        [self onPushHandler:payload wasLaunched:launched];
     }
 }
 
--(void)onLocalHandler: (UILocalNotification*) note{
+-(void)onLocalHandler: (UILocalNotification*)note wasLaunched:(NSNumber *)launched {
     if (note) {
+        if (!launched) {
+            launched = [NSNumber numberWithBool:FALSE];
+        }
+        if ([launched boolValue]) {
+            NSString *noteId = [[note userInfo] objectForKey:@"nid"] ?: @"0";
+            [self setLaunchedFlag:launched forId:noteId forRepo:@"NotificationLocal"];
+        }
         if(canDispatch)
         {
             NSMutableDictionary *dic = [NSMutableDictionary dictionary];
@@ -276,42 +337,98 @@ static bool canDispatch = false;
             [dic setObject:[note soundName] ?: @"" forKey:@"sound"];
             [dic setObject:[NSString stringWithFormat:@"%d", [note applicationIconBadgeNumber] ?: 0] forKey:@"number"];
             [dic setObject:[[note userInfo] objectForKey:@"nid"] ?: @"0" forKey:@"id"];
+            [dic setObject:[[note userInfo] objectForKey:@"custom"] ?: @"" forKey:@"custom"];
+            [dic setObject:launched forKey:@"launched"];
             [self onLocalNotification:dic];
         }
         else
         {
-            [self safe:[[[note userInfo] objectForKey:@"nid"] intValue] title:[note alertAction] body:[note alertBody] sound:[note soundName] ?: @"" number:[note applicationIconBadgeNumber] ?: 0 inRepo:@"NotificationLocalEvent"];
+            [self safe:[[[note userInfo] objectForKey:@"nid"] intValue] title:[note alertAction] body:[note alertBody] sound:[note soundName] ?: @"" number:[note applicationIconBadgeNumber] ?: 0 custom:[[note userInfo] objectForKey:@"custom"] launched:launched inRepo:@"NotificationLocalEvent"];
         }
     }
 }
 
--(void)onPushHandler: (NSDictionary*) note{
+/**
+ Validates and formats push notification 'custom' field.  We expect it to be a
+ string but if it's something else we JSON convert it.
+ */
+-(NSString *)formatCustom:(NSDictionary*)note {
+    NSString *result = @"";
+    NSObject *custom = [note objectForKey:@"custom"];
+    
+    if (custom) {
+        // NSString, NSNumber, NSArray, NSDictionary
+        if ([custom isKindOfClass:[NSString class]]) {
+            result = (NSString *)custom;
+        }
+        else if ([custom isKindOfClass:[NSNumber class]]) {
+            result = [NSString stringWithFormat:@"%@", custom];
+        }
+        else if ([NSJSONSerialization isValidJSONObject:custom]) {
+            NSData *jsonData = [NSJSONSerialization dataWithJSONObject:custom options:0 error:nil];
+            result = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+        }
+    }
+    
+    return result;
+}
+
+-(void)onPushHandler: (NSDictionary*)note wasLaunched:(NSNumber *)launched {
     if(note){
+        if (!launched) {
+            launched = [NSNumber numberWithBool:FALSE];
+        }
+        if ([launched boolValue]) {
+            NSString *noteId = [[note objectForKey:@"aps"] objectForKey:@"id"] ?: @"0";
+            [self setLaunchedFlag:launched forId:noteId forRepo:@"NotificationPush"];
+        }
         NSDictionary *aps = [note valueForKey:@"aps"];
         NSMutableDictionary *dic = [NSMutableDictionary dictionary];
-        if([[aps valueForKey:@"alert"] isKindOfClass:[NSDictionary class]])
-        {
+        if([[aps valueForKey:@"alert"] isKindOfClass:[NSDictionary class]]){
             NSDictionary *alert = [aps valueForKey:@"alert"];
+            
+            // Message body, either from 'loc-key' + 'loc-args' or 'body'.
+            NSString *body = @"";
+            NSString *locKey =[alert valueForKey:@"loc-key"];
+            
+            if (locKey){
+                NSArray *locArgs = [alert valueForKey:@"loc-args"];
+                if (locArgs) {
+                    body = [NSString stringWithFormat:NSLocalizedString(locKey, @""), locArgs];
+                }
+                else {
+                    body = NSLocalizedString(locKey, @"");
+                }
+            }
+            else{
+                body = [alert valueForKey:@"body"];
+            }
+            
+            [dic setObject:body forKey:@"body"];
+            
             [dic setObject:[alert valueForKey:@"action-loc-key"] ?: [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleDisplayName"] forKey:@"title"];
-            [dic setObject:[alert valueForKey:@"body"] ?: @"" forKey:@"body"];
         }
         else{
             [dic setObject:[[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleDisplayName"] forKey:@"title"];
             [dic setObject:[aps valueForKey:@"alert"] ?: @"" forKey:@"body"];
         }
+        
         [dic setObject:[aps valueForKey:@"sound"] ?: @"" forKey:@"sound"];
         [dic setObject:[aps valueForKey:@"badge"] ?: @"0" forKey:@"number"];
         [dic setObject:[aps valueForKey:@"id"] ?: @"0" forKey:@"id"];
-
+        NSString *custom = [self formatCustom:note];
+        [dic setObject:custom forKey:@"custom"];
+        [dic setObject:launched forKey:@"launched"];
+        
         if(canDispatch)
         {
             [self onPushNotification:dic];
         }
         else
         {
-            [self safe:[[dic objectForKey:@"id"] intValue] title:[dic objectForKey:@"title"] body:[dic objectForKey:@"body"] sound:[dic objectForKey:@"sound"] number:[[dic objectForKey:@"number"] intValue] inRepo:@"NotificationPushEvent"];
+            [self safe:[[dic objectForKey:@"id"] intValue] title:[dic objectForKey:@"title"] body:[dic objectForKey:@"body"] sound:[dic objectForKey:@"sound"] number:[[dic objectForKey:@"number"] intValue] custom:[dic objectForKey:@"custom"] launched:launched inRepo:@"NotificationPushEvent"];
         }
-        [self safe:[[dic objectForKey:@"id"] intValue] title:[dic objectForKey:@"title"] body:[dic objectForKey:@"body"] sound:[dic objectForKey:@"sound"] number:[[dic objectForKey:@"number"] intValue] inRepo:@"NotificationPush"];
+        [self safe:[[dic objectForKey:@"id"] intValue] title:[dic objectForKey:@"title"] body:[dic objectForKey:@"body"] sound:[dic objectForKey:@"sound"] number:[[dic objectForKey:@"number"] intValue] custom:[dic objectForKey:@"custom"] launched:launched inRepo:@"NotificationPush"];
     }
 }
 
@@ -322,7 +439,9 @@ static bool canDispatch = false;
     const char *text = [[note objectForKey:@"body"] UTF8String];
     int number = [[note objectForKey:@"number"] intValue];
     const char *sound = [[note objectForKey:@"sound"] UTF8String];
-    gnotification_onLocalNotification(nid, title, text, number, sound);
+    const char *custom = [[note objectForKey:@"custom"] UTF8String];
+    bool launched = !![[note objectForKey:@"launched"] boolValue];
+    gnotification_onLocalNotification(nid, title, text, number, sound, custom, launched);
 }
 
 -(void)onPushNotification: (NSMutableDictionary*) note{
@@ -332,7 +451,9 @@ static bool canDispatch = false;
     const char *text = [[note objectForKey:@"body"] UTF8String];
     int number = [[note objectForKey:@"number"] intValue];
     const char *sound = [[note objectForKey:@"sound"] UTF8String];
-    gnotification_onPushNotification(nid, title, text, number, sound);
+    const char *custom = [[note objectForKey:@"custom"] UTF8String];
+    bool launched = !![[note objectForKey:@"launched"] boolValue];
+    gnotification_onPushNotification(nid, title, text, number, sound, custom, launched);
 }
 
 -(void)onPushRegistration: (NSNotification*) n{
@@ -402,6 +523,7 @@ static bool canDispatch = false;
         [d setObject:note.alertAction forKey:@"title"];
         [d setObject:note.alertBody forKey:@"body"];
         [d setObject:note.soundName forKey:@"sound"];
+        [d setObject:[note.userInfo objectForKey:@"custom"] forKey:@"custom"];
         NSNumber *number = [NSNumber numberWithInt:note.applicationIconBadgeNumber];
         [d setObject:number forKey:@"number"];
         
@@ -428,6 +550,37 @@ static bool canDispatch = false;
 
 -(NSMutableDictionary*)getPushNotifications{
     return [self getAll:@"NotificationPush"];
+}
+
+typedef BOOL (^RepoVisitor)(NSString *nid, NSDictionary *note, NSMutableDictionary *repo);
+
+-(void)visitRepo:(NSString *)repoKey visitor:(RepoVisitor)visitor {
+    NSMutableDictionary *repo = [self getAll:repoKey];
+    if(repo != nil)
+    {
+        for(NSString *key in [repo allKeys]) {
+            if (visitor(key, [repo objectForKey:key], repo)) {
+                break;
+            }
+        }
+        
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        [defaults setObject:repo forKey:repoKey];
+        [defaults synchronize];
+    }
+}
+
+-(void) setLaunchedFlag:(NSNumber *)launched forId:(NSString *)nid forRepo:(NSString *)repo {
+    [self visitRepo:repo visitor:^BOOL(NSString *key, NSDictionary *note, NSMutableDictionary *repo) {
+        if ([key isEqualToString:nid]) {
+            NSMutableDictionary *newNote = [note mutableCopy];
+            [newNote setObject:[launched copy] forKey:@"launched"];
+            [repo removeObjectForKey:nid];
+            [repo setObject:newNote forKey:nid];
+            return TRUE;
+        }
+        return FALSE;
+    }];
 }
 
 -(void)clearLocalNotifications{
@@ -462,7 +615,7 @@ static bool canDispatch = false;
     return comps;
 }
 
--(void)safe:(int)nid title:(NSString*)title body:(NSString*)body sound:(NSString*)sound number:(int)number inRepo:(NSString*) repo{
+-(void)safe:(int)nid title:(NSString*)title body:(NSString*)body sound:(NSString*)sound number:(int)number custom:(NSString*)custom launched:(NSNumber *)launched inRepo:(NSString*) repo{
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     NSMutableDictionary *arr = [[defaults objectForKey:repo] mutableCopy];
     if(arr == NULL)
@@ -474,6 +627,7 @@ static bool canDispatch = false;
     [dic setObject:title forKey:@"title"];
     [dic setObject:body forKey:@"body"];
     [dic setObject:sound forKey:@"sound"];
+    [dic setObject:custom forKey:@"custom"];
     [dic setObject:[NSString stringWithFormat:@"%d", number] forKey:@"number"];
     [arr setObject:dic forKey:[NSString stringWithFormat:@"%d", nid]];
     [defaults setObject:arr forKey:repo];

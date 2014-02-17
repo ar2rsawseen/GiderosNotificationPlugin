@@ -16,9 +16,11 @@
     self.title = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleDisplayName"];
     self.body = @"";
     self.sound = @"";
+    self.customData = @"";
     self.repeat = 0;
     self.isDispatched = false;
     self.caller = caller;
+    self.launched = FALSE;
     
 
     return self;
@@ -63,12 +65,15 @@
         notif.soundName = [NSString stringWithFormat:@"assets/%@", self.sound];
     }
     
-    NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:[NSString stringWithFormat:@"%d", self.nid],@"nid", nil];
+    NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
+                              [NSString stringWithFormat:@"%d", self.nid], @"nid",
+                              self.customData, @"custom",
+                              nil];
     
     notif.userInfo = userInfo;
     
     [[UIApplication sharedApplication] scheduleLocalNotification:notif];
-    [self.caller safe:self.nid title:self.title body:self.body sound:self.sound number:self.number inRepo:@"NotificationLocal"];
+    [self.caller safe:self.nid title:self.title body:self.body sound:self.sound number:self.number custom:self.customData launched:[NSNumber numberWithBool:self.launched] inRepo:@"NotificationLocal"];
 }
 
 @end

@@ -27,11 +27,18 @@ public class GCMIntentService extends GCMBaseIntentService {
 			SharedPreferences alarmSettings = context.getSharedPreferences("NotificationClassData", Context.MODE_PRIVATE);
 
 			//get notification data
-			int id = bundle.getInt("id");
+			String strid = bundle.getString("id");
+			int id = 0;
+			if(strid != null)
+				id = Integer.parseInt((strid));
 			String title = bundle.getString("title");
 			String message = bundle.getString("message");
 			String sound = bundle.getString("sound");
-			int number = bundle.getInt("number");
+			String strnumber = bundle.getString("number");
+			int number = 0;
+			if(strnumber != null)
+				number = Integer.parseInt(strnumber);
+			String custom = bundle.getString("custom");
 			
 			//create notification object
 			GNotification note = new GNotification();
@@ -50,6 +57,9 @@ public class GCMIntentService extends GCMBaseIntentService {
 			}
 			if (sound != null) {
 				note.sound = sound;
+			}
+			if(custom != null){
+				note.customData = custom;
 			}
 			if (number != 0) {
 				note.number = number;

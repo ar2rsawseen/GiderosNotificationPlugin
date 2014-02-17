@@ -10,15 +10,17 @@
 #import "NotificationClass.h"
 
 @interface GNotification : NSObject
-    @property int nid;
-    @property int number;
-    @property bool isDispatched;
-    @property (nonatomic, assign) NSString *title;
-    @property (nonatomic, assign) NSString *body;
-    @property (nonatomic, assign) NSString *sound;
-    @property (nonatomic, assign) NSDate *ftime;
-    @property (nonatomic, assign) NSCalendarUnit repeat;
-    @property (nonatomic, assign) NotificationClass *caller;
+@property int nid;
+@property int number;
+@property bool isDispatched;
+@property (nonatomic, assign) NSString *title;
+@property (nonatomic, assign) NSString *body;
+@property (nonatomic, assign) NSString *sound;
+@property (nonatomic, assign) NSDate *ftime;
+@property (nonatomic, assign) NSCalendarUnit repeat;
+@property (nonatomic, assign) NotificationClass *caller;
+@property (nonatomic, assign) NSString *customData;
+@property (nonatomic, assign) BOOL launched;
 -(id)init:(NotificationClass*)caller;
 - (void) createNotification;
 

@@ -22,6 +22,8 @@ typedef struct gnotification_LocalEvent
 	const char *text;
 	int number;
 	const char *sound;
+    const char *custom;
+    bool didOpen;
 } gnotification_LocalEvent;
 
 typedef struct gnotification_PushEvent
@@ -31,6 +33,8 @@ typedef struct gnotification_PushEvent
 	const char *text;
 	int number;
 	const char *sound;
+    const char *custom;
+    bool didOpen;
 } gnotification_PushEvent;
 
 typedef struct gnotification_RegisterPushEvent
@@ -56,6 +60,7 @@ typedef struct gnotification_Group
     const char *message;
     int number;
 	const char *sound;
+    const char *custom;
 } gnotification_Group;
 
 
@@ -77,6 +82,8 @@ G_API void gnotification_set_number(int id, int number);
 G_API int gnotification_get_number(int id);
 G_API void gnotification_set_sound(int id, const char *sound);
 G_API const char* gnotification_get_sound(int id);
+G_API void gnotification_set_custom(int id, const char *custom);
+G_API const char* gnotification_get_custom(int id);
 G_API void gnotification_dispatch_now(int id);
 G_API void gnotification_dispatch_after(int id, gnotification_Parameter *params1, gnotification_Parameter *params2);
 G_API void gnotification_dispatch_on(int id, gnotification_Parameter *params1, gnotification_Parameter *params2);
@@ -95,8 +102,8 @@ G_API g_id gnotification_addCallback(gevent_Callback callback, void *udata);
 G_API void gnotification_removeCallback(gevent_Callback callback, void *udata);
 G_API void gnotification_removeCallbackWithGid(g_id gid);
 
-G_API void gnotification_onLocalNotification(int nid, const char *title, const char *text, int number, const char *sound);
-G_API void gnotification_onPushNotification(int nid, const char *title, const char *text, int number, const char *sound);
+G_API void gnotification_onLocalNotification(int nid, const char *title, const char *text, int number, const char *sound, const char* custom, bool didOpen);
+G_API void gnotification_onPushNotification(int nid, const char *title, const char *text, int number, const char *sound, const char* custom, bool didOpen);
 G_API void gnotification_onPushRegistration(const char* token);
 G_API void gnotification_onPushRegistrationError(const char* error);
 

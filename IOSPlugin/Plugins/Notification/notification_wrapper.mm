@@ -2,6 +2,32 @@
 #include "gapplication.h"
 #import "NotificationClass.h"
 
+static void *gevent_CreateEventStruct4(size_t structSize,
+                                       size_t offset1, const char *value1,
+                                       size_t offset2, const char *value2,
+                                       size_t offset3, const char *value3,
+                                       size_t offset4, const char *value4)
+{
+    size_t size1 = value1 ? (strlen(value1) + 1) : 0;
+    size_t size2 = value2 ? (strlen(value2) + 1) : 0;
+    size_t size3 = value3 ? (strlen(value3) + 1) : 0;
+    size_t size4 = value4 ? (strlen(value4) + 1) : 0;
+    
+    void *result = malloc(structSize + size1 + size2 + size3 + size4);
+    
+    char **field1 = (char**)((char*)result + offset1);
+    char **field2 = (char**)((char*)result + offset2);
+    char **field3 = (char**)((char*)result + offset3);
+    char **field4 = (char**)((char*)result + offset4);
+    
+    *field1 = value1 ? strcpy((char*)result + structSize,                 			value1) : NULL;
+    *field2 = value2 ? strcpy((char*)result + structSize + size1,         			value2) : NULL;
+    *field3 = value3 ? strcpy((char*)result + structSize + size1 + size2, 			value3) : NULL;
+    *field4 = value3 ? strcpy((char*)result + structSize + size1 + size2 + size3, 	value4) : NULL;
+    
+    return result;
+}
+
 class GNotification
 {
 public:
@@ -62,6 +88,14 @@ public:
 	
 	const char* get_sound(int id){
 		return [[n getSound:id] UTF8String];
+	}
+    
+    void set_custom(int id, const char *custom){
+		[n setCustom:[NSString stringWithUTF8String:custom] withID: id];
+	}
+	
+	const char* get_custom(int id){
+		return [[n getCustom:id] UTF8String];
 	}
 	
 	void dispatch_now(int id){
@@ -153,30 +187,34 @@ public:
 		[n readyForEvents];
 	}
 	
-	void onLocalNotification(int id, const char *title, const char *text, int number, const char *sound)
+	void onLocalNotification(int id, const char *title, const char *text, int number, const char *sound, const char* custom, bool didOpen)
 	{
-		gnotification_LocalEvent *event = (gnotification_LocalEvent*)gevent_CreateEventStruct3(
-			sizeof(gnotification_LocalEvent),
-			offsetof(gnotification_LocalEvent, title), title,
-			offsetof(gnotification_LocalEvent, text), text,
-			offsetof(gnotification_LocalEvent, sound), sound);
+		gnotification_LocalEvent *event = (gnotification_LocalEvent*)gevent_CreateEventStruct4(
+            sizeof(gnotification_LocalEvent),
+            offsetof(gnotification_LocalEvent, title), title,
+            offsetof(gnotification_LocalEvent, text), text,
+            offsetof(gnotification_LocalEvent, sound), sound,
+            offsetof(gnotification_LocalEvent, custom), custom);
 			
 		event->id = id;
 		event->number = number;
+        event->didOpen = (bool)didOpen;
 
 		gevent_EnqueueEvent(gid_, callback_s, NOTIFICATION_LOCAL_EVENT, event, 1, this);
 	}
 	
-	void onPushNotification(int id, const char *title, const char *text, int number, const char *sound)
+	void onPushNotification(int id, const char *title, const char *text, int number, const char *sound, const char *custom, bool didOpen)
 	{
-		gnotification_PushEvent *event = (gnotification_PushEvent*)gevent_CreateEventStruct3(
-			sizeof(gnotification_PushEvent),
-			offsetof(gnotification_PushEvent, title), title,
-			offsetof(gnotification_PushEvent, text), text,
-			offsetof(gnotification_PushEvent, sound), sound);
+		gnotification_PushEvent *event = (gnotification_PushEvent*)gevent_CreateEventStruct4(
+            sizeof(gnotification_PushEvent),
+            offsetof(gnotification_PushEvent, title), title,
+            offsetof(gnotification_PushEvent, text), text,
+            offsetof(gnotification_PushEvent, sound), sound,
+            offsetof(gnotification_PushEvent, custom), custom);
 			
 		event->id = id;
 		event->number = number;
+        event->didOpen = (bool)didOpen;
 
 		gevent_EnqueueEvent(gid_, callback_s, NOTIFICATION_PUSH_EVENT, event, 1, this);
 	}
@@ -208,12 +246,12 @@ public:
 
 		for (NSString *key in dic) {
             NSMutableDictionary *n = [dic objectForKey:key];
-			gnotification_Group gparam = {[key intValue], [[n objectForKey:@"title"] UTF8String], [[n objectForKey:@"body"] UTF8String], [[n objectForKey:@"number"] intValue], [[n objectForKey:@"sound"] UTF8String]};
+			gnotification_Group gparam = {[key intValue], [[n objectForKey:@"title"] UTF8String], [[n objectForKey:@"body"] UTF8String], [[n objectForKey:@"number"] intValue], [[n objectForKey:@"sound"] UTF8String], [[n objectForKey:@"custom"] UTF8String]};
 			
 			group.push_back(gparam);
 		}
 		
-		gnotification_Group param = {0, NULL, NULL, 0, NULL};
+		gnotification_Group param = {0, NULL, NULL, 0, NULL, NULL};
 		group.push_back(param);
 		
 		return &group[0];
@@ -317,6 +355,14 @@ void gnotification_set_sound(int id, const char *sound){
 const char* gnotification_get_sound(int id){
 	return s_note->get_sound(id);
 }
+    
+void gnotification_set_custom(int id, const char *custom){
+    s_note->set_custom(id, custom);
+}
+    
+const char* gnotification_get_custom(int id){
+    return s_note->get_custom(id);
+}
 
 void gnotification_dispatch_now(int id){
 	s_note->dispatch_now(id);
@@ -385,14 +431,14 @@ void gnotification_removeCallbackWithGid(g_id gid)
 
 
 //events
-void gnotification_onLocalNotification(int nid, const char *title, const char *text, int number, const char *sound)
+void gnotification_onLocalNotification(int nid, const char *title, const char *text, int number, const char *sound, const char *custom, bool didOpen)
 {
-    s_note->onLocalNotification(nid, title, text, number, sound);
+    s_note->onLocalNotification(nid, title, text, number, sound, custom, didOpen);
 }
 	
-void gnotification_onPushNotification(int nid, const char *title, const char *text, int number, const char *sound)
+void gnotification_onPushNotification(int nid, const char *title, const char *text, int number, const char *sound, const char* custom, bool didOpen)
 {
-	s_note->onPushNotification(nid, title, text, number, sound);
+	s_note->onPushNotification(nid, title, text, number, sound, custom, didOpen);
 }
 	
 void gnotification_onPushRegistration(const char* token)
